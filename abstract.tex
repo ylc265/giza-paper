@@ -1,0 +1,14 @@
+\begin{abstract}
+This is a very abstract paper.
+\end{abstract}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:
+%\name{} unifies concurrency control and consensus by explicitly tracking the
+%dependencies among transactions at server replicas involved in the
+%transactions.  It collects and aggregates the dependency graph in one or two
+%round-trips during transaction commit.  Doing so allows servers to
+%deterministically break any cycles detected in the dependency graph by
+%re-ordering operations whose execution is deferred to commit time.  
