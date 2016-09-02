@@ -1,0 +1,3 @@
+\section{Implementation}
+(This paragraph is poorly written but contains the gist of what I will put in the implementation section)
+We implemented Giza’s core logic in c plus plus. The erasure coding was implemented using the Jerasure library written in c. The Paxos logic requires conditional updates in its prepare and accept phase. We were able to utilized the etag functionality provided by Azure Table Storage to implement the atomic updates. We further optimized the number of round trips by spinning up virtual machines in the same data centers as the table storage to provide the conditional updates locally. The giza node then makes an rpc call to the corresponding VM to execute the paxos prepare and accept phase. 

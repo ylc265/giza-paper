@@ -120,7 +120,7 @@
 \newcommand{\AUTHORS}{Paper \#xxx}
 %\newcommand{\TITLE}{JANUS: Jesus! Another traNsaction and consensUS protocol}
 %\newcommand{\TITLE}{Unifying Concurrency Control and Consensus for More Commits and Lower Latency}
-\newcommand{\TITLE}{Giza is a system}
+\newcommand{\TITLE}{Giza: Erasure Coding across WAN}
 \newcommand{\KEYWORDS}{Put your keywords here}
 \newcommand{\CONFERENCE}{Somewhere}
 \newcommand{\PAGENUMBERS}{yes}       % "yes" or "no"
@@ -280,7 +280,7 @@ bookmarksopen = {true}
 \soulregister\ref7
 \soulregister\pageref7
 
-%\setlength{\parindent}{0pt}
+%\setlength{\parindent}{2pt}
 %\setlength{\parskip}{\baselineskip}
 
 %\clubpenalty=10000  % Don't allow orphans
@@ -372,15 +372,15 @@ Copyright 200X ACM X-XXXXX-XX-X/XX/XX ...\$5.00}
 
 \input{abstract}
 \ifthenelse{\equal{\onlyAbstract}{no}}{%
-%\input{intro}
+\input{intro}
 %\input{motivation}
-%\input{design2}
+\input{design}
 %\input{ext}
-%\input{impl}
-%\input{eval}
+\input{impl}
+\input{eval}
 %\realnewpage
 \input{related}
-%\input{concl}
+\input{concl}
 %\realnewpage
 %\input{bg}
 %\input{design}
