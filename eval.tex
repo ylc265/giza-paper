@@ -1,5 +1,55 @@
 \section{Evaluation}
-\subsection{3 RTT Put and Get}
-\subsection{2 RTT Put and Get}
-\subsection{1 RTT Put and Get}
-\subsection{Recovery}
+
+qustions to answer?
+
+performance with difference sized object and with different contention level.
+ -latency result, single node throughput
+
+correctness under failures/network partitions.
+ 
+
+\subsection{Setup}
+*machines*
+
+*workloads ycsb*
+
+*performance metrics: latency, cpu*
+
+*is it possible to choose real workload?*
+
+
+\subsection{Small object}
+64K $\sim$ 16MB
+
+X-axis: Value size
+Y-axis: 50\% Read latency
+
+X-axis: Value size
+Y-axis: 90\% Read latency
+
+X-axis: Value size
+Y-axis: 99\% Read latency
+
+Same for write
+
+[adding cpu results in a table]
+
+\subsection{Large object}
+256MB $\sim$ 1GB
+
+X-axis: Value size
+Y-axis: Average Read latency
+
+X-axis: Value size
+Y-axis: Average Write latency
+
+
+\subsection{Contention}
+
+Fixed object size
+X-axis: zipf coefficient
+Y-axis: 50\%, 90\%, 99\% Read/Write Latency
+
+
+\subsection{Real workload}
+Table.
