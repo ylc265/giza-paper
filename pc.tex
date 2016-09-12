@@ -1,113 +1,115 @@
+
+%%%%%%%%%%%%%%%%%%%%%
+% Put
+%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}
   \DontPrintSemicolon
   \SetArgSty{textrm}
-  %safe log ($T$, $p$) on first execute \;
-  %assign $T$ a globally unique identifier \;
-  $T$'s metadata is a globally unique identifier, a partition list, and an abandon flag. \;
-  \underline{PreAccept Phase:}\;
-  send \emph{PreAccept}($T$) to all participating servers \;
-  \If{$\forall$ piece $\alpha_i$ $\in$ $\alpha_1...\alpha_N$, $\alpha_i$ has a fast quorum of {\em PreAcceptOK}s with the identical graph $g_i$ } {
-    goto commit phase \;
-  } \ElseIf {$\forall$ $\alpha_i$ $\in$ $\alpha_1...\alpha_N$, $\alpha_i$ has a majority quorum of {\em PreAcceptOK}s} {
-        goto accept phase \;
+  $[f_1, ..., f_n]$ \LAR erasure coded fragments of {\em File}\;
+  location\char`_metadata \LAR mapping of coding fragments and their respective data centers\;
+  Write location\char`_metadata to local fault tolerant storage\;
+  do concurrently:\;
+  current\char`_version \LAR Metadata\char`_Put({\em FID}, metadata\char`_location)\;
+  send $[f_1, .., f_n]$ to respective data centers\;
+  \If{both succeed} {
+    \Return {\em current\char`_version}
   } \Else {
-	  \Return \sc{FailureRecovery}(T)\;
+    \Return {\em Put-NotOK}
   }
-  \underline{Accept Phase:} \;
-  \ForEach{$\alpha_i$ $\in$ $\alpha_1...\alpha_N$} {
-      $g_i$ \LAR Union graphs returned by the majority quorum for piece $\alpha_i$.
-    }
-  \ForEach{$\alpha_i$ in $\alpha_1...\alpha_N$ in parallel} {
-	  send \emph{Accept}($T$, $g_i$, ballot=0) to $\alpha_i$'s participating servers.
-  }
-  \If {$\forall$ $\alpha_i$ has a majority quorum of {\em Accept-OK}s} {
-	  goto commit phase \;
-  } \Else {
-      \Return \sc{FailureRecovery}(T) \;
-  }
-  \underline{Commit Phase:} \;
-  $g_{T}$ = Union($g_1, g_2, ..., g_N$) \;
-  send {\em Commit}($T$, $g_{T}$) to all participating servers \;
-  return to client after receiving execution results. 
-  \caption{Coordinator::\sc{DoTxn}($T$=$[\alpha_1,...,\alpha_N]$) }
+  \caption{Coordinator::\sc{Put}($FID$, $File$) }
   \label{alg:coordinator}
 \end{algorithm}
 
-
+%%%%%%%%%%%%%%%%%%%%%
+% Get
+%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}
   \DontPrintSemicolon
   \SetArgSty{textrm}
-  %safe log ($T$, $p$) on first execute \;
-  \If{$T\in \mathcal{G}_S$} { 
-	//$T$ is already in the local dep. graph \;
-	\Return {\em PreAccept-NotOK}\;
-  } 
-  //add $T$ to $\mathcal{G}_S$ \;
-  {\sc AddNewTx}($\mathcal{G}_S$, $T$) \;
-  $g_T$ \LAR {\sc AncestorGraph}($\mathcal{G}_S$, $T$)\;
-  \Return \emph{PreAccept-OK}, $g_{T}$ \;
-  \caption{Server $S$::\sc{PreAccept}($T$)}
-  \label{alg:preaccept}
+  location\char`_metadata \LAR location metadata for the highest version of {\em FID} stored locally\;
+  do concurrently:\;
+  Get $[f_1, ..., f_n]$ from the data centers recorded in the location\char`_metadata\;
+  latest\char`_location\char`_metadata \LAR Metadata\char`_Get({\em FID})\;
+  \If{latest\char`_location\char`_metadata is the same as location\char`_metadata} {
+    File \LAR decode using $[f_1, ..., f_n]$\;
+    \Return {\em File}\;
+  } \Else {
+    Get $[f_1, ..., f_n]$ from the data centers recorded in latest\char`_location\char`_metadata\;
+    File \LAR decode using $[f_1, ..., f_n]$\;
+    \Return {\em File}\;
+  }
+  \caption{Coordinator::\sc{Get}($FID$) }
+  \label{alg:coordinator}
 \end{algorithm}
 
-
+%%%%%%%%%%%%%%%%%%%%%
+% Metadata Put
+%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}
   \DontPrintSemicolon
   \SetArgSty{textrm}
-  %safe log ($T$, $p$) on first execute \;
-  \If{$\mathcal{G}_S[T].status$ $\geq$ {\sf committing} or \; \ \ \ $\mathcal{G}_S[T].ballot > ballot$ } {
-	  \Return \em{Accept-NotOK}, $\mathcal{G}_S[T].ballot$\;
+  %unsafe log ($T, G$)
+%  on first execute \;k
+  v \LAR get latest version number of Key from local storage.\;
+  \Repeat {Value = decided\char`_value} { 
+     v \LAR v + 1 \;
+     decided\char`_value \LAR Decide\char`_Value(({\em Key}, v), {\em Value})
   }
-  $\mathcal{G}_S[T].status$ \LAR {\sf accepted}\;
-  $\mathcal{G}_S[T].ballot$ \LAR ballot\;
-  //replace T's ancestor graph in $\mathcal{G}_S$ with $g$\;
-  $\mathcal{G}_S$ \LAR {\sc ReplaceAncestors}($\mathcal{G}_S$, $g$)\;
-  \Return {\em Accept-OK} 
-  \caption{Server $S$::\sc{Accept}($T$, $g$, $ballot$)}
-  \label{alg:accept}
+  \Return {\em v} \;
+  \caption{Coordinator::\sc{Metadata\char`_Put}($Key$, $Value$)}
 \end{algorithm}
 
-
-
-
-
-
-
-\begin{algorithm}[h]
+%%%%%%%%%%%%%%%%%%%%%
+% Metadata Get
+%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}
   \DontPrintSemicolon
   \SetArgSty{textrm}
-  \underline{Prepare Phase:} \;
-  $b$ {\LAR} highest ballot number seen + 1\;
-  send \emph{Prepare}($T$, ballot=$b$) to all participating servers\;
-  \If{$\exists$ {\em Tx-Done},$g_{T}$ among replies} {
-	  //$T$'s ancestor graph $g_{T}$ has been determined\;
-	  goto commit phase\;
-  } \ElseIf {$\forall$ $\alpha_i$ has a majority quorum of {\em Prepare-OK}s} {
-      \If {$\exists$ $\alpha_i$ whose majority quorum does not contain its input {\bf or} $\exists$ $\alpha_i$ whose reply with highest ballot has $T$.abandon set} {
-	    $T$.abandon = true\;
-	  } % \Else{ $T$.abandon = false\;}
-	  goto accept phase\;
+  %unsafe log ($T, G$)
+%  on first execute \;k
+  v \LAR get latest version number of Key from local storage.\;
+  \Repeat {Value = decided\char`_value} { 
+     v \LAR v + 1 \;
+     decided\char`_value \LAR Decide\char`_Value(({\em Key}, v), {\em Value})
+  }
+  \Return {\em v} \;
+  \caption{Coordinator::\sc{Metadata\char`_Get}($Key$)}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Decide_Value
+%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}
+  \DontPrintSemicolon
+  \SetArgSty{textrm}
+  Send Accept({\em Key}, {\em Value}, ballot=0) to all servers in parallel\;
+  \If{a fast quorum returns Accept-OKs} {
+    run background learning phase\;
+    \Return {\em Value}\;
   } \Else {
-      goto prepare phase\;
+    goto prepare phase.\;
+    
   }
-  \underline{Accept Phase:} \;
-  \ForEach{$\alpha_i$ in $\alpha_1...\alpha_N$} {
-	  $g_i$ \LAR the graph that appears in most replies of the majority quorum for $\alpha_i$\;
-  }
-  \ForEach{$\alpha_i \in \alpha_i..\alpha_N$ in parallel}{
-	  send \emph{Accept}($T$, $g_i$, ballot=$b$) to $\alpha_i$'s servers\;
-  }
-  \If {$\forall$ $\alpha_i$ has a majority quorum of {\em Accept-OK}s} {
-      goto commit phase
+  \underline{Prepare Phase:}\;
+  b \LAR highest ballot number seen + 1\;
+  send Prepare({\em Key}, ballot=b) to all participating servers\;
+  \If{a fast quorum returns Prepare-OKs}{
+    {\em Value} = highest accepted value from the fast quorum, if none exists, original value.
+    goto accept phase
   } \Else {
-  	  goto prepare phase\;
+    goto prepare phase
   }
-  \underline{Commit Phase:} \;
-  $g_{T}$ = Union($g_1, g_2, ..., g_N$) \;
-  send {\em Commit}($T$, $g_{T}$) to all participating servers \;
-  return after receiving execution results \;
-  \caption{Coordinator $C$::\sc{FailureRecovery}($T$)}
-  \label{alg:recovery}
+  \underline{Accept Phase:}\;
+  Send Accept({\em Key}, {\em Value}, ballot=b) to all participating servers\;
+  \If{a fast quorum returns Accept-OKs}{
+    run background learning phase.\;
+    \Return {\em Value}
+  } \Else {
+    goto prepare phase
+  }
+ 
+  \caption{Coordinator::\sc{Decide\char`_Value}($Key$, $Value$) }
+  \label{alg:coordinator}
 \end{algorithm}
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -117,144 +119,32 @@
 \begin{algorithm}[h]
   \DontPrintSemicolon
   \SetArgSty{textrm}
-  $g_T$ \LAR {\sc AncestorGraph}($\mathcal{G}_S$, $T$)\;
-  \If {$\mathcal{G}_S[T].status \geq$ {\sf commiting}} {
-	  \Return Tx-Done, $g_T$\;
-  }\ElseIf{$\mathcal{G}_S[T].ballot > ballot$} {
-	  \Return Prepare-NotOK, $ballot$\;
+  \If{Table[{\em Key}].ballot < {\em ballot}}{
+    Table[{\em Key}].ballot = {\em ballot}\;
+    \Return {\em Prepare-OK, Table[ Key].accepted\char`_value}
+  } \Else {
+    \Return Prepare-NotOK
   }
-  
-  $\mathcal{G}_S[T].ballot$\LAR$ballot$ \;
-  reply $T$, \emph{Prepare-OK}, $g_T$ \;
-  \caption{Server $S$::\sc{Prepare}($T$, $ballot$)}
+  \caption{Server $S$::\sc{Prepare}($Key$, $ballot$)}
   \label{alg:prepare}
 \end{algorithm}
 
-
 %%%%%%%%%%%%%%%%%%%%%
-% commit
+% accept
 %%%%%%%%%%%%%%%%%%%%%
-
 \begin{algorithm}
   \DontPrintSemicolon
   \SetArgSty{textrm}
-  %unsafe log ($T, G$)
-%  on first execute \;k
-  $\mathcal{G}_S$ \LAR {\sc ReplaceAncestor}($\mathcal{G}_S$, $g$) \;
-  $\mathcal{G}_S[T].status = $ {\sf committed} \;
-  \Repeat {$\forall T'$\TRAR$T$ in $\mathcal{G}_S$ : $\mathcal{G}_S[T'].status \ge$ {\sf committing}} { \label{line:wait_commit_begin}
-    \For{each $T'$\TRAR$T$ in $\mathcal{G}_S$ :
-      $\mathcal{G}_S$[$T'$].$status$ < {\sf committing} } {
-      \If{$T'$ does not involve $S$} {
-        send an \emph{Inquire}($T'$) request to a nearest server
-        that $T'$ involves \;
-      }
-      wait until $\mathcal{G}_S[T'].status \ge$ {\sf committing} \;
-    }
-  } \label{line:wait_commit_end}
-
-  $scc$ {\LAR} {\sc StronglyConnectedComponent}($\mathcal{G}_S$, $T$) \;
-%{\color{red} Our paper says $T' \notin ${\TSCC} {\bf and} $T'$\TRAR$\TSCC$ } 
-% You are right, should be TRAR
-  \For{each $T' \notin scc$ {\bf and} $T'$\TRAR$T$ } {
-    wait until $\mathcal{G}_S[T'].status$ >= {\sf committing} \;
-    \If{$T$ involves $S$ {\bf and} $\mathcal{G}_S[T'].status$ is {\sf finished}} {
-      wait until $executed_S[T']$ mark is set \;
-    }
+  %safe log ($T$, $p$) on first execute \;
+  \If{Table[Key].accepted\char`_value is empty and {\em ballot} = 0 or Table[Key].ballot \leq {\em ballot} } {
+      Table[Key].accepted\char`_value \LAR {\em Value}\;
+	  Table[Key].ballot \LAR {\em ballot}\;
+	  Table[Key].accepted\char`_number \LAR {\em ballot}\;
+	  \Return {\em Accept-OK}
+  }\Else {
+      \Return {\em Accept-NotOK}
   }
-
-  \For {each $T'$ in {\sc DeterministicSort}($scc$)} {
-    %$\mathcal{G}_S[T'].status$ {\LAR} Max($\mathcal{G}_S[T'].status$, {\sf finished}) \;
-    $\mathcal{G}_S[T'].status$ {\LAR} {\sf finished} \;
-
-    
-    \If {$T'$ contains $S$ {\bf and} not $executed_S[T']$} {
-      \If {not $T'$.abandon} {
-        Execute($T'$) \;
-      }
-      $executed_[T']$ \LAR $true$ \;
-      reply \emph{CommitOK} or \emph{Abort} to $C'$, the coordinator of $T'$ \;
-    }
-  }
-  \caption{Server $S$::\sc{Commit}($T$, $g$)}
+  \caption{Server $S$::\sc{Accept}($Key$, $Value$, $ballot$)}
+  \label{alg:accept}
 \end{algorithm}
-
-%%%%%%%%%%%%%%%%%%%%%
-% WL commit
-%%%%%%%%%%%%%%%%%%%%%
-
-\begin{algorithm}
-  \DontPrintSemicolon
-  \SetArgSty{textrm}
-  %unsafe log ($T, G$)
-%  on first execute \;k
-  $\mathcal{G}_S$ \LAR {\sc ReplaceAncestor}($\mathcal{G}_S$, $g$) \;
-  $\mathcal{G}_S[T].status = $ {\sf committed} \;
-  \underline{Wait \& Inquire Phase:} \;
-  \Repeat {$\forall T'$\TRAR$T$ in $\mathcal{G}_S$ : $\mathcal{G}_S[T'].status \ge$ {\sf committing}} { \label{line:wait_commit_begin}
-    {\bf choose} $T'$\TRAR$T$:
-      $\mathcal{G}_S$[$T'$].$status$ < {\sf committing} \; 
-      \If{$T'$ does not involve $S$} {
-        send \emph{Inquire}($T'$) to a nearest server
-        that $T'$ involves \;
-        $g'$ \LAR inquire result \;
-        $\mathcal{G}_S$ \LAR {\sc ReplaceAncestor}($\mathcal{G}_S$, $g'$) \;
-      }
-      wait until $\mathcal{G}_S[T'].status \ge$ {\sf committing} \;
-
-  } \label{line:wait_commit_end}
-  \underline{Execute Phase:} \;
-  
-  \Repeat {$processed_S[T]$ is $true$} {
-    {\bf choose} $T' \in \mathcal{G}_S$: {\sc ReadyToExecute}($T'$) \;
-    $scc$ {\LAR} {\sc StronglyConnectedComponent}($\mathcal{G}_S$, $T'$) \;
-    \For {each $T''$ in {\sc DeterministicSort}($scc$)} {
-      \If {$T''$ involves $S$ {\bf and not} $T''.abandon$} {
-        $T''.result$ \LAR execute $T''$ \;
-      }
-      $processed_S[T'']$ \LAR $true$ \;
-      $\mathcal{G}_S[T''].status$ {\LAR} {\sf finished} \;
-    }
-  }
-  reply \emph{CommitOK}, $T.abandon$, $T.result$ \;
-  \caption{Server $S$::\sc{Commit}($T$, $g$)}
-\end{algorithm}
-
-
-\begin{algorithm}[h]
-  \DontPrintSemicolon
-  \SetArgSty{textrm}
-  \If {$processed_S[T]$} {
-    return $false$ \;
-  }
-  $scc$ {\LAR} {\sc StronglyConnectedComponent}($\mathcal{G}_S$, $T$) \;
-  \For{each $T' \notin scc$ {\bf and} $T'$\TRAR$T$} {
-    \If {$processed_S[T'] \ne true$} {
-      return $false$ \;
-    }
-  }
-  return $true$ \;
-  \caption{Server $S$::\sc{ReadyToExecute}($T$)}
-  \label{alg:prepare}
-\end{algorithm}
-
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%
-% inquire
-%%%%%%%%%%%%%%%%%%%%%
-
-\begin{algorithm}[h]
-  \DontPrintSemicolon
-  \SetArgSty{textrm}
-
-  wait until $\mathcal{G}_S[T].status$ >= {\sf committing} \;
-  $g_T$ \LAR {\sc AncestorGraph}($\mathcal{G}_S$, $T$)\;
-  reply $g_T$ \;
-  \caption{Server $S$::\sc{Inquire}($T$)}
-  \label{alg:prepare}
-\end{algorithm}
-
 
