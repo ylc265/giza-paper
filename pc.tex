@@ -56,7 +56,7 @@
      decided\char`_value \LAR Decide\char`_Value(({\em Key}, v), {\em Value})
   }
   \Return {\em v} \;
-  \caption{Coordinator::\sc{Metadata\char`_Put}($Key$, $Value$)}
+  \caption{Coordinator::\sc{Metadata\_Put}($key$, $value$) }
 \end{algorithm}
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -67,13 +67,29 @@
   \SetArgSty{textrm}
   %unsafe log ($T, G$)
 %  on first execute \;k
-  v \LAR get latest version number of Key from local storage.\;
-  \Repeat {Value = decided\char`_value} { 
-     v \LAR v + 1 \;
-     decided\char`_value \LAR Decide\char`_Value(({\em Key}, v), {\em Value})
+  row \LAR retrieve\_fromLocalMetadataTable($key$) \;
+  ver \LAR row.read\_col(''latest\_committed\_version'')\;
+  $location\_info$ \LAR row.read\_col(ver); \;
+  // use $location\_info$ to pre-fetch data fragments in background \;
+  \For {each datacenter that stores $key$'s metadata} {
+    row \LAR RetrieveFromRemoteMetadataTable($key$)
   }
-  \Return {\em v} \;
-  \caption{Coordinator::\sc{Metadata\char`_Get}($Key$)}
+  %wait until at least receiving a majoriy of replies inlcuding local metadata %row, expecting a fast quorum of replies optimistically.
+  wait until receiving a fast quorum of replies including local metadata row. \;
+  \If {get a fast quroum that is set *replace this*} {
+    $ver'$ \LAR this fast quorum (*replace this* \;
+    \If{if $ver' > ver$} {
+      $location\_info'$ \LAR write something here *replace this*; \;
+      use $location\_info'$ \LAR fetch data fagaments
+      decode and return
+    } \Else {
+      return the prefetched data.
+    } 
+  }\Else {
+    TODO
+  }
+  
+  \caption{Giza::\sc{Get}($Key$)}
 \end{algorithm}
 
 %%%%%%%%%%%%%%%%%%%%%
