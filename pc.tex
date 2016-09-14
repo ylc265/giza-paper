@@ -6,22 +6,63 @@
   \DontPrintSemicolon
   \SetArgSty{textrm}
   $[f_1, ..., f_n]$ \LAR erasure coded fragments of {\em File}\;
-  location\char`_metadata \LAR mapping of coding fragments and their respective data centers\;
-  Write location\char`_metadata to local fault tolerant storage\;
-  do concurrently:\;
-  current\char`_version \LAR Metadata\char`_Put({\em FID}, metadata\char`_location)\;
-  send $[f_1, .., f_n]$ to respective data centers\;
-  \If{both succeed} {
+  {\em location\_info} \LAR $\{f_1: dc_1, ..., f_n: dc_n\}$\;
+  write\_to\_local\_storage({\em location\char`_info})\;
+  Send $[f_1, ..., f_n]$ to $[dc_1, ..., dc_n]$ in the background.\;
+  current\char`_version \LAR MetadataPut({\em FID}, {\em location\_info})\;
+  \If{both Metadata\_Put and background task succeed} {
+    delete\_from\_local\_storage({\em location\_info})\;
     \Return {\em current\char`_version}
   } \Else {
     \Return {\em Put-NotOK}
   }
-  \caption{Coordinator::\sc{Put}($FID$, $File$) }
+  \caption{Giza::\sc{Put}($FID$, $File$) }
   \label{alg:coordinator}
 \end{algorithm}
 
 %%%%%%%%%%%%%%%%%%%%%
 % Get
+%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}
+  \DontPrintSemicolon
+  \SetArgSty{textrm}
+  %unsafe log ($T, G$)
+%  on first execute \;k
+  {\em row} \LAR retrieve\_from\_local\_metadata\_table({\em key}) \;
+  {\em ver} \LAR row.read\_col(''latest\_committed\_version'')\;
+  {\em location\_info} \LAR row.read\_col(ver); \;
+  // use {\em location\_info} to pre-fetch data fragments in background \;
+  \For {each datacenter that stores {\em key}'s metadata} {
+    row \LAR retrieve\_from\_remote\_metadata\_table({\em key})
+  }
+  %wait until at least receiving a majoriy of replies inlcuding local metadata %row, expecting a fast quorum of replies optimistically.
+  wait until receiving a fast quorum of replies {\em Q} including local metadata row. \;
+  \If {IsConsistent({\em Q})} {
+    {\em ver'} \LAR consistent latest committed version from {\em Q}\;
+    \If{ {\em ver'} > {\em ver}} {
+      {\em location\_info'} \LAR consistent latest committed version entry from {\em Q}\;
+      use {\em location\_info'} to fetch data fragments\;
+      decode and return
+    } \Else {
+      decode and return the prefetched data.
+    } 
+  }\Else {
+    {\em ver'} \LAR MetadataPut({\em key}, {\em Get-Op}) - 1\;
+    \If { {\em ver'} > {\em ver}} {
+       {\em row'} \LAR retrieve\_from\_local\_metadata\_table({\em key}) \;
+       {\em location\_info'} \LAR row.read\_col({\em ver'}); \;
+       use {\em location\_info'} to fetch data fragments\;
+      decode and return
+    } \Else {
+      decode and return the prefetched data.
+    }
+  }
+  
+  \caption{Giza::\sc{Get}($Key$)}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%
+% IsConsistent
 %%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}
   \DontPrintSemicolon
@@ -38,7 +79,7 @@
     File \LAR decode using $[f_1, ..., f_n]$\;
     \Return {\em File}\;
   }
-  \caption{Coordinator::\sc{Get}($FID$) }
+  \caption{Coordinator::\sc{IsConsistent}($Q$) }
   \label{alg:coordinator}
 \end{algorithm}
 
@@ -50,47 +91,17 @@
   \SetArgSty{textrm}
   %unsafe log ($T, G$)
 %  on first execute \;k
-  v \LAR get latest version number of Key from local storage.\;
-  \Repeat {Value = decided\char`_value} { 
-     v \LAR v + 1 \;
-     decided\char`_value \LAR Decide\char`_Value(({\em Key}, v), {\em Value})
+  for all row in Q, if all latest entry version are the same. I need more time to think of this.
+  {\em row} \LAR retrieve\_from\_local\_metadata\_table({\em key}) \;
+  {\em ver} \LAR row.read\_col(''latest\_committed\_version'')\;
+  \Repeat {{\em value} = {\em decided\_value}} { 
+     {\em ver} \LAR {\em ver} + 1 \;
+     {\em decided\_value} \LAR DecideValue(({\em key}, {\em ver}), {\em value})
   }
-  \Return {\em v} \;
-  \caption{Coordinator::\sc{Metadata\_Put}($key$, $value$) }
+  \Return {\em ver} \;
+  \caption{Coordinator::\sc{MetadataPut}($key$, $value$) }
 \end{algorithm}
 
-%%%%%%%%%%%%%%%%%%%%%
-% Metadata Get
-%%%%%%%%%%%%%%%%%%%%%
-\begin{algorithm}
-  \DontPrintSemicolon
-  \SetArgSty{textrm}
-  %unsafe log ($T, G$)
-%  on first execute \;k
-  row \LAR retrieve\_fromLocalMetadataTable($key$) \;
-  ver \LAR row.read\_col(''latest\_committed\_version'')\;
-  $location\_info$ \LAR row.read\_col(ver); \;
-  // use $location\_info$ to pre-fetch data fragments in background \;
-  \For {each datacenter that stores $key$'s metadata} {
-    row \LAR RetrieveFromRemoteMetadataTable($key$)
-  }
-  %wait until at least receiving a majoriy of replies inlcuding local metadata %row, expecting a fast quorum of replies optimistically.
-  wait until receiving a fast quorum of replies including local metadata row. \;
-  \If {get a fast quroum that is set *replace this*} {
-    $ver'$ \LAR this fast quorum (*replace this* \;
-    \If{if $ver' > ver$} {
-      $location\_info'$ \LAR write something here *replace this*; \;
-      use $location\_info'$ \LAR fetch data fagaments
-      decode and return
-    } \Else {
-      return the prefetched data.
-    } 
-  }\Else {
-    TODO
-  }
-  
-  \caption{Giza::\sc{Get}($Key$)}
-\end{algorithm}
 
 %%%%%%%%%%%%%%%%%%%%%
 % Decide_Value
@@ -98,9 +109,9 @@
 \begin{algorithm}
   \DontPrintSemicolon
   \SetArgSty{textrm}
-  Send Accept({\em Key}, {\em Value}, ballot=0) to all servers in parallel\;
+  Send Accept({\em key}, {\em value}, {\em ballot}=0) to all servers in parallel\;
   \If{a fast quorum returns Accept-OKs} {
-    run background learning phase\;
+     send committed value and version number to all participating servers in the background.\;
     \Return {\em Value}\;
   } \Else {
     goto prepare phase.\;
@@ -108,23 +119,25 @@
   }
   \underline{Prepare Phase:}\;
   b \LAR highest ballot number seen + 1\;
-  send Prepare({\em Key}, ballot=b) to all participating servers\;
+  send Prepare({\em key}, {\em ballot}=b) to all participating servers\;
   \If{a fast quorum returns Prepare-OKs}{
-    {\em Value} = highest accepted value from the fast quorum, if none exists, original value.
+    \If {fast quorum contains accepted value} {
+      {\em value} = highest accepted value from fast quorum.
+    }
     goto accept phase
   } \Else {
     goto prepare phase
   }
   \underline{Accept Phase:}\;
-  Send Accept({\em Key}, {\em Value}, ballot=b) to all participating servers\;
+  Send Accept({\em key}, {\em value}, {\em ballot}=b) to all participating servers\;
   \If{a fast quorum returns Accept-OKs}{
-    run background learning phase.\;
-    \Return {\em Value}
+    send committed value and version number to all participating servers in the background.\;
+    \Return {\em value}
   } \Else {
     goto prepare phase
   }
  
-  \caption{Coordinator::\sc{Decide\char`_Value}($Key$, $Value$) }
+  \caption{Coordinator::\sc{DecideValue}($key$, $value$) }
   \label{alg:coordinator}
 \end{algorithm}
 
@@ -135,13 +148,13 @@
 \begin{algorithm}[h]
   \DontPrintSemicolon
   \SetArgSty{textrm}
-  \If{Table[{\em Key}].ballot < {\em ballot}}{
-    Table[{\em Key}].ballot = {\em ballot}\;
-    \Return {\em Prepare-OK, Table[ Key].accepted\char`_value}
+  \If{Table[{\em key}].ballot < {\em ballot}}{
+    Table[{\em key}].ballot = {\em ballot}\;
+    \Return {\em Prepare-OK, Table[ key].accepted\char`_value}
   } \Else {
     \Return Prepare-NotOK
   }
-  \caption{Server $S$::\sc{Prepare}($Key$, $ballot$)}
+  \caption{Server $S$::\sc{Prepare}($key$, $ballot$)}
   \label{alg:prepare}
 \end{algorithm}
 
@@ -152,15 +165,15 @@
   \DontPrintSemicolon
   \SetArgSty{textrm}
   %safe log ($T$, $p$) on first execute \;
-  \If{Table[Key].accepted\char`_value is empty and {\em ballot} = 0 or Table[Key].ballot \leq {\em ballot} } {
-      Table[Key].accepted\char`_value \LAR {\em Value}\;
-	  Table[Key].ballot \LAR {\em ballot}\;
-	  Table[Key].accepted\char`_number \LAR {\em ballot}\;
+  \If{Table[key].accepted\char`_value is empty and {\em ballot} = 0 or Table[key].ballot \leq {\em ballot} } {
+      Table[key].accepted\char`_value \LAR {\em value}\;
+	  Table[key].ballot \LAR {\em ballot}\;
+	  Table[key].accepted\char`_number \LAR {\em ballot}\;
 	  \Return {\em Accept-OK}
   }\Else {
       \Return {\em Accept-NotOK}
   }
-  \caption{Server $S$::\sc{Accept}($Key$, $Value$, $ballot$)}
+  \caption{Server $S$::\sc{Accept}($key$, $value$, $ballot$)}
   \label{alg:accept}
 \end{algorithm}
 
