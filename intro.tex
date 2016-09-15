@@ -1,4 +1,7 @@
-\section{Intro}
+\section{Introduction}
+
+\comment{
+
 Giza is a cloud storage front end that erasure codes large mutable data files across multiple data centers . The motivation of Giza is to reduce overall storage cost and to tolerate entire data center failures, while maintaining strong consistency and reasonable read and write latencies.
 
 \par
@@ -9,27 +12,49 @@ Paxos is a consensus algorithm that satisfies the safety property in an asynchro
 \par
 Erasure Encoding is a very mature technique used in storage systems for data striping and fault tolerance.
 
-\subsection{}
+%\subsection{}
 Project Giza stores erasure coded data objects across multiple geographically distributed data centers. It provides the same or higher level of durability than geo-replication, but at much reduced storage cost. Project Giza leverages existing cloud storage APIs and operates on the top of existing public clouds.
+
+}
 
 \subsection{Cross-DC Erasure Coding: Why Now?}
 
-There has been a long line of prior work~\ref{bib:blah} arguing for storing data objects in erasure coded form, as opposed to replication, across geo-graphically distributed data centers. Similar to geo-replication, cross-DC erasure coding can ensure durability even in the event of massive data center failures. Cross-DC erasure coding, however, can result in lower storage cost compared to geo-replication. The same economis force that has powered clous storage providers to erasure code data within individual  data centers extends natually to the cross-DC scenario.
+There have been a long line of prior work~\ref{bib:BlahBlah} arguing for storing data objects in erasure coded form, as opposed to replication, across geo-graphically distributed data centers. Similar to geo-replication, cross-DC erasure coding can ensure durability even in the event of massive data center failures. Cross-DC erasure coding, however, can result in lower storage cost compared to geo-replication. The same economis force that has powered clous storage providers to erasure code data within individual  data centers extends natually to the cross-DC scenario.
 
 Nevertheless, none of the cloud storage providers today offer options for customers to erasure code their data across data centers to reduce cost. We argue this is largely due to an overlooked factor: the cost of WAN bandwdith. The reduction in storage cost of cross-DC erasure coding comes at the cost of inflated WAN traffic during normal read/write work flow, as well as in the event of massive data center failure. With geo-replication, normal read operation is served from single primary data center, so there is no WAN traffic. In the event of data center failure, all reads can completely fail-over to the secondary datan center, where there is again no stress on the WAN backbone. With cross-DC erasure coding, however, both normal reads and fail-over reads incur non-trivial WAN traffic. Since the total cost of cloud storage includes both the storage alone cost and the WAN cost, cross-DC erasure coding has not been an economic solution.
 
 The technology advancement in wide area networking has progressed to a point where new innovation is greatly reducing WAN bandwidth cost. Most recently, Facebook Inc. and Microsoft Corp. have teamed up to build a new fiber optic cable under the Atlantic Ocean, which uses eight pairs of fiber optic strands and comes online in 2017 with 160 terabits per second capacity~\ref{bib:MAREA1, bib:MAREA2}.
+
+{\bf TODO: make the below a table}
 
 TransAtlantic Undesea Cable     | FLAG Atlantic 1~\ref{bib:FA-1}    | MAREA~\ref{bib:MAREA1, bib:MAREA2}
 Ready For Service (RFS)         | 2001                              | 2017
 Cost (Billion)                  | 1.1                               | undisclosed
 Capacity                        | 10 Gbps                           | 160 Tbps
 
-{\comment bib:MAREA1, http://www.wsj.com/articles/facebook-and-microsoft-to-build-fiber-optic-cable-across-atlantic-1464298853}
-{\comment bib:MAREA2, http://www.usatoday.com/story/experience/2016/05/26/microsoft-facebook-undersea-cable-google-marea-amazon/84984882/}
-{\comment bib:FA-1, https://en.wikipedia.org/wiki/Fiber-Optic_Link_Around_the_Globe}
+\comment{bib:MAREA1, http://www.wsj.com/articles/facebook-and-microsoft-to-build-fiber-optic-cable-across-atlantic-1464298853}
+\comment{bib:MAREA2, http://www.usatoday.com/story/experience/2016/05/26/microsoft-facebook-undersea-cable-google-marea-amazon/84984882/}
+\comment{bib:FA-1, https://en.wikipedia.org/wiki/Fiber-Optic_Link_Around_the_Globe}
 
-\subsection{Cross-DC Erasure Coding: A Case for Flexibility}
+\subsection{Giza Overview}
+
+Giza provides an externally consistent (linearizable~\ref{bib:linearizable}) versioned object store, which erasure codes data objects and stores them across globally distributed data centers.
+
+Customers access Giza service by creating special Giza storage accounts, which is similar to today's cloud storage accounts. In addition to storing data within single data center, across multiple availability zones within a region, or across two geo-graphically distributed data centers, Giza storage accounts allow the customers to specify the set of data centers where their data is striped across, as well as the resulted total storage overhead.
+
+The customers access Giza service with simple put/get/delete interface. In addition to standard object storage interface, Giza provides addtional option to support versioning, where new put requests will not overwrite existing objects, but rather create new version of the objects. The old versions remain in the system and accessible before they are explicitly removed.
+
+Giza operates on the top of existing cloud storage systems and leverages their public APIs. It uses blob storage to store customer data objects and nosql table storage to store metatadata, which keeps track of pointers to the blob storage, as well as versioning information.
+
+Figure~\ref{fig:giza_example} illustrates the work flow of putting a customer data object. Giza operates a group of {\em stateless} Giza nodes in every data center. Say a customer uses Giza clients (command line, library for various programming language, or REST interface) to put a 4MB data object. The Giza client routes the request to one of the Giza nodes in the data center closest to the customer. The Giza node divides the data object into 2 data fragments ($a$ and $b$), with each fragment being 2MB. It then invokes an erasure coding process and generates a parity fragment of 2MB. The Giza node disperses and stores the 3 fragments (2 data and 1 parity) in the blob storage in 3 data centers (1 local and 2 remote). The pointers to the 3 blob storage, together with versioning information, form the metadata of the customer data object. The Giza node persists the metadata in the nosql tables in the 3 data centers.
+
+\subsection{Challenges and Contributions}
+
+
+
+\section{A Case for Giza}
+
+\subsection{The Need for Flexibility}
 
 Erasure coding across geo-graphically distributed data centers is a most effective approach to reduce storage cost while achieving the fault tolerance goal of being able to survive data center failure. As Facebook's F4 system~\ref{bib:F4} has demonstrated, replacing geo-replication with cross-DC erasure coding can effectively reduce storage overhead from 3.6x to 2.1x, achieving huge savings for Facebook's 65PB of worm storage. While a fixed 2 + 1 solution works very well for Facebook's special workload, the public cloud storage desires much more flexibility. Different customers have different desirable operating points in terms of cost, durability and latency trade-off and are willing to accept different pricing for different needs. This creates an opportunity to offer flexible cross-DC erasure coding options.
 
@@ -37,6 +62,8 @@ Giza provide completes flexibility to the customers. When a storage account is c
 
 The default configuration applies $k+1$ erasure coding, where each data object is divided into $k$ data fragments and $1$ single parity fragment is generated from the $k$ data fragments. Here, all the $k+1$ fragments are persisted in $k+1$ data centers. In addition to the default configuration, the customer could 
 The default configuration applies $k+1$ erasure coding, where each data object is divided into $k$ data fragments and $1$ single parity fragment is generated from the $k$ data fragments. Here, all the $k+1$ fragments are persisted in $k+1$ data centers. In addition to the default configuration, the customer could create storage accounts with {\em enhanced durability}, where 2 parity fragments are generated from the $k$ data fragments. The resulted $k+2$ erasure coding scheme would tolerate arbitrary 2 data center failures and therefore achieve much higher durability than the standard solution. As shown in the below table~\ref{tab:cost_benefit}, compared to the geo-replication, the enhanced durability is able to achieve much higher durability while still reducing storage cost.
+
+\subsection{Storage & Bandwdith Trade-off}
 
 {\bf Daniel}, could you help to add the cost-benefit table from the slide deck here?
 
