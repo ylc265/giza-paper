@@ -25,7 +25,14 @@ There have been a long line of prior work~\ref{bib:BlahBlah} arguing for storing
 
 Nevertheless, none of the cloud storage providers today offer options for customers to erasure code their data across data centers. This is largely due to the current cost of WAN bandwdith. The reduction in storage cost of cross-DC erasure coding comes at the cost of inflated WAN traffic during normal read/write work flow, as well as in the event of massive data center failure. With geo-replication, normal read operation is served from single primary data center, so there is no WAN traffic. In the event of data center failure, all reads can completely fail-over to the secondary data center, where there is again no stress on the WAN backbone. With cross-DC erasure coding, however, both normal reads and fail-over reads incur non-trivial WAN traffic. Since the total cost of cloud storage includes both the storage alone cost and the WAN cost, cross-DC erasure coding has not been an economic solution.
 
-Nevertheless, the technology advancement in wide area networking has progressed to a point where new innovation is greatly reducing WAN bandwidth cost. Most recently, Facebook Inc. and Microsoft Corp. have teamed up to build a new fiber optic cable under the Atlantic Ocean, which uses eight pairs of fiber optic strands and comes online in 2017 with 160 terabits per second capacity~\ref{bib:MAREA1, bib:MAREA2}.
+Nevertheless, the technology advancement in wide area networking has progressed to a point where new innovation is greatly reducing WAN bandwidth cost. There are two key driving forces. The erbium-doped fiber amplifiers~\ref{bib:mears} makes it possible to amplifies a huge spectrum of optical signal directly, with the need to first convert it to an electrical signal. This enables Dense Wave Divsion Multiplexing (DWDM), which make it possible to send 10+ terabits per single fiber~\ref{bib:below}. 
+
+\Comment{
+Mears, R.J. and Reekie, L. and Poole, S.B. and Payne, D.N.: "Low-threshold tunable CW and Q-switched fiber laser operating at 1.55μm", Electron. Lett., 1986, 22, pp.159-160
+
+
+
+Most recently, Facebook Inc. and Microsoft Corp. have teamed up to build a new fiber optic cable under the Atlantic Ocean, which uses eight pairs of fiber optic strands and comes online in 2017 with 160 terabits per second capacity~\ref{bib:MAREA1, bib:MAREA2}.
 
 {\bf TODO: make the below a table}
 
