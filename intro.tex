@@ -42,15 +42,28 @@ Giza provides an externally consistent (linearizable~\ref{bib:linearizable}) ver
 
 Customers access Giza service by creating special Giza storage accounts, which is similar to today's cloud storage accounts. In addition to storing data within single data center, across multiple availability zones within a region, or across two geo-graphically distributed data centers, Giza storage accounts allow the customers to specify the set of data centers where their data is striped across, as well as the resulted total storage overhead.
 
-The customers access Giza service with simple put/get/delete interface. In addition to standard object storage interface, Giza provides addtional option to support versioning, where new put requests will not overwrite existing objects, but rather create new version of the objects. The old versions remain in the system and accessible before they are explicitly removed.
+The customers access Giza service with simple put/get/delete interface. In addition to standard object storage interface, Giza provides addtional option to support versioning, where new put requests will not overwrite an existing object, but rather create new versions of the same object. The old versions remain in the system and accessible until they are explicitly removed.
 
-Giza operates on the top of existing cloud storage systems and leverages their public APIs. It uses blob storage to store customer data objects and nosql table storage to store metatadata, which keeps track of pointers to the blob storage, as well as versioning information.
+Giza operates on the top of existing cloud storage systems and leverages their public APIs. It uses blob storage to store customer data objects and nosql table storage to store metatadata.
 
-Figure~\ref{fig:giza_example} illustrates the work flow of putting a customer data object. Giza operates a group of {\em stateless} Giza nodes in every data center. Say a customer uses Giza clients (command line, library for various programming language, or REST interface) to put a 4MB data object. The Giza client routes the request to one of the Giza nodes in the data center closest to the customer. The Giza node divides the data object into 2 data fragments ($a$ and $b$), with each fragment being 2MB. It then invokes an erasure coding process and generates a parity fragment of 2MB. The Giza node disperses and stores the 3 fragments (2 data and 1 parity) in the blob storage in 3 data centers (1 local and 2 remote). The pointers to the 3 blob storage, together with versioning information, form the metadata of the customer data object. The Giza node persists the metadata in the nosql tables in the 3 data centers.
+Figure~\ref{fig:giza_example} illustrates the work flow of putting a customer data object. Giza operates a group of {\em stateless} Giza nodes in every data center. Say a customer uses Giza clients (command line, library for various programming language, or REST interface) to put a 4MB data object. The Giza client routes the request to one of the Giza nodes in the data center closest to the customer. The Giza node divides the data object into 2 data fragments ($a$ and $b$), with each fragment being 2MB. It then invokes an erasure coding process and generates a parity fragment of 2MB. The Giza node disperses and stores the 3 fragments (2 data and 1 parity) in the blob storage in 3 data centers (1 local and 2 remote). The pointers to the 3 blob storage, together with versioning information, form the metadata of the customer data object. The Giza node persists the metadata in the nosql table storage in the 3 data centers.
 
 \subsection{Challenges and Contributions}
 
+Giza tolerates data center failures. Even in the event of massive data center failure, the customers need to be able to continuously get existing data objects, update them, or put new ones.
 
+Giza supports concurrent gets and puts. While the blob storage and nosql table storage within individual data centers operate independently, Giza needs to coordinate all the accesses so as to achieve external consistency (linerizability).
+
+The workloads that Giza target don't have high concurrency. This means that single reader / writer is the common case and Giza strives to {\em make the common case fast}. On the other hand, concurrency do arise in various situations, such as failures or uncommon usage. Even though concurrency is a rare case, Giza needs to {\em guarantee the rare case correct}. The technical challengue turns out to be how to achieve both the above, even in the event of massive data center failure.
+
+Towards this end, we have made the following contributions:
+\begin{itemize}
+    \item We have designed and implemented Giza, which provides a versioned object store that erasure codes data objects and stores them across globally distributed data centers.
+    \item Giza is fast in the common case: when there is no concurrency, Giza completes within single WAN RTT, which is optimal given the requirement to tolerate data center failure.
+    \item Giza is correct in the rare case: under concurrency and with data center failure, Giza achieves external consistency (linearizability).
+    \item Giza employs well-known distributed algorithms, such as Paxos and Fast Paxos, in a novel way so that it operates on the top of exsiting public cloud storage systems.
+    \item Giza is deployed in xxx data centers. Trace-driven experiments demonstrate that Giza achieve all our design goals. In particular, it is worth pointing out that Giza achieves much lower latency than naively adopting a globally consistent storage system, like Google's spanner.
+\end{itemize}
 
 \section{A Case for Giza}
 
