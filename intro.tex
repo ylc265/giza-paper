@@ -1,22 +1,5 @@
 \section{Introduction}
 
-\comment{
-
-Giza is a cloud storage front end that erasure codes large mutable data files across multiple data centers . The motivation of Giza is to reduce overall storage cost and to tolerate entire data center failures, while maintaining strong consistency and reasonable read and write latencies.
-
-\par
-We have made the following contributions in this paper. First, we observed that cross-data center network bandwidth grow rapidly. This, coupled with the rapid growth in cloud storage capacity, strongly motivates the use of cross WAN erasure coding in practice. Second, we have designed a cross WAN erasure coded key-value storage which relies on limited interface supported by many existing cloud APIs such as Azure and AWS. This key-value store is strongly consistent and can tolerate complex network partitions. Lastly, we have implemented this system as a frontend on top of the Azure storage and demonstrated that such a system can replace current solutions for write heavy workloads.
-
-\subsection{Background}
-Paxos is a consensus algorithm that satisfies the safety property in an asynchronous network. 
-\par
-Erasure Encoding is a very mature technique used in storage systems for data striping and fault tolerance.
-
-%\subsection{}
-Project Giza stores erasure coded data objects across multiple geographically distributed data centers. It provides the same or higher level of durability than geo-replication, but at much reduced storage cost. Project Giza leverages existing cloud storage APIs and operates on the top of existing public clouds.
-
-}
-
 \subsection{Cross-DC Erasure Coding: Why Now?}
 
 As the entire IT industry is rapidly moving to cloud, and more and more data center is built all over the world, the probabiliy that a single data center will fail catastrophically becomes inevitable. It is essential that the data stored in the cloud is protected against such catastrophical failure. 
@@ -27,19 +10,34 @@ Nevertheless, none of the cloud storage providers today offer options for custom
 
 Nevertheless, the technology advancement in wide area networking has progressed to a point where new innovation is greatly reducing WAN bandwidth cost. There are two key driving forces. The erbium-doped fiber amplifiers~\ref{bib:mears} makes it possible to amplifies a huge spectrum of optical signal directly, with the need to first convert it to an electrical signal. This enables Dense Wave Divsion Multiplexing (DWDM), which make it possible to send 10+ terabits per single fiber~\ref{bib:below}. 
 
-\Comment{
-Mears, R.J. and Reekie, L. and Poole, S.B. and Payne, D.N.: "Low-threshold tunable CW and Q-switched fiber laser operating at 1.55μm", Electron. Lett., 1986, 22, pp.159-160
+\comment{
 
-Zhu, B., et al. "112-Tb/s space-division multiplexed DWDM transmission with 14-b/s/Hz aggregate spectral efficiency over a 76.8-km seven-core fiber." Optics Express 19.17 (2011): 16665-16671.
+Mears, R.J. and Reekie, L. and Poole, S.B. and Payne, D.N.: ``Low-threshold tunable CW and Q-switched fiber laser operating at 1.55μm'', Electron. Lett., 1986, 22, pp.159-160
+
+Zhu, B., et al. ``112-Tb/s space-division multiplexed DWDM transmission with 14-b/s/Hz aggregate spectral efficiency over a 76.8-km seven-core fiber.'' Optics Express 19.17 (2011): 16665-16671.
+
 }
+
 Most recently, Facebook Inc. and Microsoft Corp. have teamed up to build a new fiber optic cable under the Atlantic Ocean, which uses eight pairs of fiber optic strands and comes online in 2017 with 160 terabits per second capacity~\ref{bib:MAREA1, bib:MAREA2}.
 
 {\bf TODO: make the below a table}
 
-TransAtlantic Undesea Cable     | FLAG Atlantic 1~\ref{bib:FA-1}    | MAREA~\ref{bib:MAREA1, bib:MAREA2}
-Ready For Service (RFS)         | 2001                              | 2017
-Cost (Billion)                  | 1.1                               | undisclosed
-Capacity                        | 10 Gbps                           | 160 Tbps
+\begin{table}[thp]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+Cable Name                      & FLAG Atlantic 1~\ref{bib:FA-1}    & MAREA~\ref{bib:MAREA1, bib:MAREA2}
+\\ \hline \hline
+Ready For Service               & 2001                              & 2017
+\\ \hline
+Cost (Billion)                  & 1.1                               & undisclosed
+\\ \hline
+Capacity                        & 10 Gbps                           & 160 Tbps
+\\ \hline \hline
+\end{tabular}
+\caption{TransAtlantic Networking Connectivity \\ (exemplary udersea cable connecting US and Europe)}
+\label{tab:mears}
+\end{table}
 
 \comment{bib:MAREA1, http://www.wsj.com/articles/facebook-and-microsoft-to-build-fiber-optic-cable-across-atlantic-1464298853}
 \comment{bib:MAREA2, http://www.usatoday.com/story/experience/2016/05/26/microsoft-facebook-undersea-cable-google-marea-amazon/84984882/}

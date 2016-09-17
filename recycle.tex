@@ -1,0 +1,16 @@
+\comment{
+
+Giza is a cloud storage front end that erasure codes large mutable data files across multiple data centers . The motivation of Giza is to reduce overall storage cost and to tolerate entire data center failures, while maintaining strong consistency and reasonable read and write latencies.
+
+\par
+We have made the following contributions in this paper. First, we observed that cross-data center network bandwidth grow rapidly. This, coupled with the rapid growth in cloud storage capacity, strongly motivates the use of cross WAN erasure coding in practice. Second, we have designed a cross WAN erasure coded key-value storage which relies on limited interface supported by many existing cloud APIs such as Azure and AWS. This key-value store is strongly consistent and can tolerate complex network partitions. Lastly, we have implemented this system as a frontend on top of the Azure storage and demonstrated that such a system can replace current solutions for write heavy workloads.
+
+\subsection{Background}
+Paxos is a consensus algorithm that satisfies the safety property in an asynchronous network. 
+\par
+Erasure Encoding is a very mature technique used in storage systems for data striping and fault tolerance.
+
+%\subsection{}
+Project Giza stores erasure coded data objects across multiple geographically distributed data centers. It provides the same or higher level of durability than geo-replication, but at much reduced storage cost. Project Giza leverages existing cloud storage APIs and operates on the top of existing public clouds.
+
+}
