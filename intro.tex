@@ -2,14 +2,14 @@
 
 \subsection{Cross-DC Erasure Coding: Why Now?}
 
-As the entire IT industry is rapidly moving to the cloud, more and more data centers are being built all over the globe. The event that one of the data centers will fail catastrophically gradually becomes inevitable. In other words, this is no longer a matter of ``if'', but rather ''when''. It is essential that data stored in the cloud is protected against such catastrophical failure.
+As the entire IT industry is rapidly moving to the cloud, more and more data centers are being built all over the globe. The event that one of the data centers will fail catastrophically gradually becomes inevitable. In other words, this is no longer a matter of ``if'', but rather ''when''. It is essential that data stored in the cloud is protected against such catastrophic failure.
 
-There have been a long line of prior work~\ref{bib:BlahBlah} arguing for storing data objects in erasure coded form, as opposed to replication, across geo-graphically distributed data centers. Similar to geo-replication, cross-DC erasure coding can ensure durability even in the event of catastrophical data center failure. A main motivation for cross-DC erasure coding is to significantly reduce storage cost compared to geo-replication. The same economic force that has powered cloud providers to erasure code data within individual data centers natually extends to the cross-DC scenario.
+There have been a long line of prior work~\ref{bib:BlahBlah} arguing for storing data objects in erasure coded form, as opposed to replication, across geo-graphically distributed data centers. Similar to geo-replication, cross-DC erasure coding can ensure durability even in the event of catastrophic data center failure. A main motivation for cross-DC erasure coding is to significantly reduce storage cost compared to geo-replication. The same economic force that has powered cloud providers to erasure code data within individual data centers naturally extends to the cross-DC scenario.
 
-Nevertheless, none of the cloud providers today offer options to erasure code customer data across data centers. This is largely due to the prohibitive cost of WAN bandwdith. The reduction in storage cost of cross-DC erasure coding comes at the additional cost of inflated WAN traffic, for both normal read/write work flow and access/rebuild in the event of data center failure. With geo-replication, normal read operation is served from single primary data center, so there is no WAN traffic. In the event of data center failure, all reads can completely fail-over to the secondary data center, where there is again no stress on the WAN backbone. With cross-DC erasure coding, however, both normal reads and fail-over reads incur non-trivial WAN traffic. Since the total cost of cloud storage includes both the storage alone cost and the WAN cost, cross-DC erasure coding has not been an economic solution.
+Nevertheless, none of the cloud providers today offer options to erasure code customer data across data centers. This is largely due to the prohibitive cost of WAN bandwidth. The reduction in storage cost of cross-DC erasure coding comes at the additional cost of inflated WAN traffic, for both read/write during normal operation and access/rebuild in the event of data center failure, as illustrated in detail in section~\ref{sec:motivation}.
+\comment{With geo-replication, normal read operation is served from single primary data center, so there is no WAN traffic. In the event of data center failure, all reads can completely fail-over to the secondary data center, where there is again no stress on the WAN backbone. With cross-DC erasure coding, however, both normal reads and fail-over reads incur non-trivial WAN traffic.} Since the total cost of cloud storage includes both the storage cost in individual data centers and the WAN traffic cost across the data centers, cross-DC erasure coding has not become an economic solution yet.
 
-Nevertheless, the technology advancement in wide area networking has progressed to a point where new innovation is greatly reducing WAN bandwidth cost. There are two key driving forces. The erbium-doped fiber amplifiers~\ref{bib:mears} makes it possible to amplifies a huge spectrum of optical signal directly, with the need to first convert it to an electrical signal. This enables Dense Wave Divsion Multiplexing (DWDM), which make it possible to send 10+ terabits per single fiber~\ref{bib:below}. 
-
+Fortunately, the technology advancement in wide area networking has progressed to a point where new innovations have greatly reduced WAN bandwidth cost. There are two key driving forces: 1) The erbium-doped fiber amplifiers~\ref{bib:mears} make it practical to amplify a huge spectrum of optical signal directly, without the need to first convert it to an electrical signal. 2) Dense Wave Division Multiplexing (DWDM) is therefore enabled by the fiber amplifiers and can send 10+ terabits per single fiber~\ref{bib:below}.
 \comment{
 
 Mears, R.J. and Reekie, L. and Poole, S.B. and Payne, D.N.: ``Low-threshold tunable CW and Q-switched fiber laser operating at 1.55μm'', Electron. Lett., 1986, 22, pp.159-160
@@ -18,15 +18,13 @@ Zhu, B., et al. ``112-Tb/s space-division multiplexed DWDM transmission with 14-
 
 }
 
-Most recently, Facebook Inc. and Microsoft Corp. have teamed up to build a new fiber optic cable under the Atlantic Ocean, which uses eight pairs of fiber optic strands and comes online in 2017 with 160 terabits per second capacity~\ref{bib:MAREA1, bib:MAREA2}.
-
-{\bf TODO: make the below a table}
+Most recently, Facebook and Microsoft have teamed up to build $MAREA$, a new fiber optic cable under the Atlantic Ocean that uses eight pairs of fiber optic strands and will come online in 2017 with 160 Tbps capacity~\ref{bib:MAREA1, bib:MAREA2}. Compared to MAREA, another transatlantic cable, FLAG Atlantic 1, had a mere capacity of 10 Gbps when coming online in 2001. The over 10,000x bandwidth increase in less than two decades is summarized in Table~\ref{tab:mears}. While the cost of MAREA remains undisclosed, it suffices to show that the cost of WAN bandwidth has reduced by several orders of magnitude. Indeed, the significant cost reduction in WAN bandwidth now makes cross-DC erasure coding economically attractive. And Project Giza addresses technical challenges so as to make such economical solution a reality.
 
 \begin{table}[thp]
 \centering
 \begin{tabular}{|l|c|c|}
 \hline
-Cable Name                      & FLAG Atlantic 1~\ref{bib:FA-1}    & MAREA~\ref{bib:MAREA1, bib:MAREA2}
+TransAtlantic Cable             & FLAG Atlantic 1~\ref{bib:FA-1}    & MAREA~\ref{bib:MAREA1, bib:MAREA2}
 \\ \hline \hline
 Ready For Service               & 2001                              & 2017
 \\ \hline
@@ -35,7 +33,7 @@ Cost (Billion)                  & 1.1                               & undisclose
 Capacity                        & 10 Gbps                           & 160 Tbps
 \\ \hline \hline
 \end{tabular}
-\caption{TransAtlantic Networking Connectivity \\ (exemplary udersea cable connecting US and Europe)}
+\caption{Cost of WAN bandwidth reduced by orders of magnitude.}
 \label{tab:mears}
 \end{table}
 
@@ -45,15 +43,17 @@ Capacity                        & 10 Gbps                           & 160 Tbps
 
 \subsection{Giza Overview}
 
-Giza provides an externally consistent (linearizable~\ref{bib:linearizable}) versioned object store, which erasure codes data objects and stores them across globally distributed data centers.
+Giza provides an externally consistent (linearizable~\ref{bib:linearizable}) versioned cloud storage service, which erasure codes data objects and stores them across globally distributed data centers.
 
-Customers access Giza service by creating special Giza storage accounts, which is similar to today's cloud storage accounts. In addition to storing data within single data center, across multiple availability zones within a region, or across two geo-graphically distributed data centers, Giza storage accounts allow the customers to specify the set of data centers where their data is striped across, as well as the resulted total storage overhead.
+Customers access Giza service by creating Giza storage accounts.
+\comment{Complementary to today's cloud storage offerings, that store customer data within single data center, across multiple availability zones within a region, or even multiple geographically distributed data centers,}
+Per storage account, Giza allows the customers to specify the set of data centers where their data are striped across. In addition, the customers have the flexibility to choose erasure coding scheme. Giza employs classic $n = k + r$ Reed-Solomon coding, which generates $r$ parity fragments from $k$ data fragments. All $n$ fragments are stored in different data centers, where 1) failures of up to $m$ arbitrary data centers are tolerated; and 2) data can be reconstructed from any $k$ out of the $n$ data centers. By allowing the customers to specify the set of data centers and choose the erasure coding scheme, Giza gives the customers complete control of durability and storage overhead.
 
-The customers access Giza service with simple put/get/delete interface. In addition to standard object storage interface, Giza provides addtional option to support versioning, where new put requests will not overwrite an existing object, but rather create new versions of the same object. The old versions remain in the system and accessible until they are explicitly removed.
+The customers access Giza with straightforward {\em put}/{\em get}/{\em delete} interface. In addition, Giza provides optional support of versioning, where new {\em put} does not overwrite existing data, but rather creates a new version of the same data. The old version remains available until it is explicitly expired or deleted.
 
-Giza operates on the top of existing cloud storage systems and leverages their public APIs. It uses blob storage to store customer data objects and nosql table storage to store metatadata.
+Giza operates on the top of existing cloud storage system and leverages public APIs. It uses blob storage to store customer data and nosql table storage to store metadata.
 
-Figure~\ref{fig:giza_example} illustrates the work flow of putting a customer data object. Giza operates a group of {\em stateless} Giza nodes in every data center. Say a customer uses Giza clients (command line, library for various programming language, or REST interface) to put a 4MB data object. The Giza client routes the request to one of the Giza nodes in the data center closest to the customer. The Giza node divides the data object into 2 data fragments ($a$ and $b$), with each fragment being 2MB. It then invokes an erasure coding process and generates a parity fragment of 2MB. The Giza node disperses and stores the 3 fragments (2 data and 1 parity) in the blob storage in 3 data centers (1 local and 2 remote). The pointers to the 3 blob storage, together with versioning information, form the metadata of the customer data object. The Giza node persists the metadata in the nosql table storage in the 3 data centers.
+Figure~\ref{fig:giza_example} illustrates the flow of storing a customer data object. Giza operates a number of {\em stateless} Giza nodes in every data center. Say a customer uses a Giza client (command line, library, or REST interface) to store a 4MB data object. The Giza client routes the {\em put} request to one of the Giza nodes in the data center closest to the customer. The Giza node divides the data object into $2$ data fragments ($a$ and $b$) of 2MB each. It then invokes erasure coding and generates a parity fragment $p$ of size 2MB. The Giza node stores all the $3$ fragments (2 data and 1 parity) in the blob storage in 3 data centers (1 local and 2 remote). It also stores the metadata, consisting of the pointers to the blob storage, as well as versioning information, in the nosql table storage in the 3 data centers.
 
 \subsection{Challenges and Contributions}
 
