@@ -21,29 +21,129 @@
 
 \subsection{Erasure coding}
 
-\section{*Design*}
+\section{Design}
 
+This section will present the basic design of {\name}, including the overall architecture,
+the metadata schemes, and the protocols for supported operations in {\name}. 
 
 \subsection{Architecture}
-*Giza is designed for Azure-like storage systems, here is architecture of azure*. give a figure. workflow
+{\name} is designed for globe-scale cloud storage system that span across many datacenters across
+the world. ~\Cref{fig:xxxx} shows a generic architecture of such systems, e.g. Windows Azure
+Storage. To maximize utilization of current systems, {\name} takes a local table service and
+blob service as building blocks, to store metadata and data respectively. This evolutional
+design allows {\name} to minimize footprint of code, merely replacing the previous front-end
+module. With {\name} deployed, the user request comes in to the new frontend, where the new
+service will translate the user requests into a few metadata operations and data operations.
 
-*^^^
-*how data is replicated inside & across datacenters.*
+In {\name}, both metadata and data blocks are synchronously duplicated across different
+datacenters in order to tolerate datacenter failures. What is different bewteen metadata
+and data is, metadata is fully replicated across a (usually smaller) set of datacenters using
+a tailored Fast-Paxos algorithm, persistent in the table service in each datacenter, thus
+tolerating a minority of failures; On the other hand, data in user request is encoded to
+a configurable number of fragments and shipped to a (usually larger) set of datacenters,
+persistent in the blob storage service. We refer the former as metadata path and the latter
+as data path.
 
-*overview of giza's workflow: metadata-path, paxos part, datapath.*
+\sm{
+Shuai: why we use 3 datacenters for metadata but 7 datacenters for data?
+}
+
+The separation of metadat path and datapth bring in the challenge that the consistency level
+could be violated with brutal yet flawed merge of the two. Our protocols described in later
+sections will guarantee the metadata path and data path together (especially when they are
+fully concurrent) will still provide a strong consistency ensurance.
+
+
 
 % A typical giza architecture for a data center includes the giza nodes, the Azure Blob Storage, and the Azure Table Storage. The giza nodes are the processing units of the Giza architecture and manages the data and the metadata. Furthermore the giza nodes participate in paxos rounds as coordinators. Figure 1 illustrates the architecture of Giza. Giza separates data from metadata and handles them on different paths. The data path is responsible for encoding the data and sending the data fragments across data centers. Each data fragment is stored in the corresponding DC’s Azure Blob Storage. The metadata path is responsible for storing the latest version of the data and the location of its data fragments. Giza uses a variant of the Paxos state machine replication (SMR) to maintain consistency of the metadata where each metadata server maintains a local copy of the replicated log. The replicated log is stored in the Azure Table Storage.
 
-\subsection{Metadata Table}
-The metadata for each object includes the latest modification to that object using a versioning scheme. The highest version corresponds to the latest modification and the decided value for the version. In addition, the metadata also includes the location of the data fragments for the latest version. The metadata is replicated using a variant of the Paxos state machine replication. Instead of having a single log recording all the executions, each object has a corresponding paxos log. Giza uses the fault-tolerant Azure Table to store the metadata where each entry in the table corresponds to an object. Figure 2 illustrates the schema of the metadata table.
+\subsection{Metadata Schemes}
+Before going into the protocols of {\name} operations, we first demonstrate our metadata
+scheme. The metadata of an object is a row with a unfixed number of columns, as shown
+in~\Cref{fig:xxxxx}. {\name} uses a version number to distinguish overwrites upon the same
+object, so the metadata contains a column \texttt{highest\_committed\_version}, which is
+a hint of which version is the latest modification, a.k.a. the decided version. It is named
+as \texttt{highest\_committed\_version} rather than \textt{highest\_version} to avoid the
+ambiguity that the version may not be highest \emph{ongoing} version. Actually, the
+\texttt{highest\_committed\_version} may not even be the real highest committed version at
+the moment, but rather a hint that this version is possbily the highest committed version.
 
-\subsubsection{Giza-Put}
+In addition to the \textt{highest\_committed\_version}, the metadata needs to store the
+location information of data fragment for each version. The location information contains
+the coding configurations, which datacenters store the original/parity fragments, the keys
+to retrieve those fragments in each blob service.
+
+The metadata row is replicated in a number of datacenters using a variant of Fast-Paxos
+algorithm. Instead of storing the states of Fast-Paxos elsewhere, {\name} made a design
+choice to use the metadata row itself as a durable space to hold the Fast-Paxos states.
+The advantage of this choice is that {\name} can reuse the table service as the persistence
+layer for the state machine replication, making {\name} nodes themself stateless. As a
+result, {\name} node has much less to worry about failure recovery. When a {\name} node
+is (suspiciously) failing, a new {\name} node can be launched as an replacement without
+doing extra work to nullify the previous node. The new node can directly access the table
+service to work. 
 
 
-\subsubsection{Giza-Get}
+%The metadata for each object includes the latest modification to that object using a versioning scheme. The highest version corresponds to the latest modification and the decided value for the version. In addition, the metadata also includes the location of the data fragments for the latest version. The metadata is replicated using a variant of the Paxos state machine replication. Instead of having a single log recording all the executions, each object has a corresponding paxos log. Giza uses the fault-tolerant Azure Table to store the metadata where each entry in the table corresponds to an object. Figure 2 illustrates the schema of the metadata table. 
 
+\subsection{{\name} Operations}
 
-\subsubsection{Concurrent Data and Metadata path}
+{\name} supports three operations: put, get and delete. All of them require a key as
+an argument to identify an object. put takes object content as an extra argument, get
+returns object content (null if non-exist) as result. A delete operation is processed
+as a special write, putting a tombstone in the object's metadata. The actual recycling
+of disk content happens at garbage collection, which will be described in ~\Cref{sec:xxxx}.
+
+\subsubsection{Put}
+
+When the {\name} node receives a put request, it encodes the data to $k$ originial fragments
+and $m$ parity fragments. $k$ and $m$ are configurable. Then the node computes a content
+hash for each fragment, and use the hash value as key to write each fragment to a separate
+datacenter.
+
+\sm {
+  Shuai: Hi Daniel, can you give me a few details about the hashing? e.g. hashing method,
+  hashing result size, collision rate, etc.)
+}
+
+Concurrently with the above data path, the giza node enters a metadata path to persist
+the metadata into the table service in each datacenter. The metadata path begins with
+choosing a proper version number to run the Fast-Paxos algorithm. The version number needs
+to be the next version to the most recent committed version. It is safe to use an outdated
+version (in which case the {\name} node will be noticed later and retry with a higher one),
+but it is unsafe to choose a higher one. {\name} node finds the proper version in an
+optimistic fashion. It first reading the highest\_committed\_version in the local table,
+then use it plus one as the chosen version number.
+
+With version number chosen, the {\name} node sends out a PreAccept request to the table
+service in each datacenter. The reqeust is a conditional update, if the metadata row
+does not see any other update request on that version, it will acknowledge OK, otherwise
+it will reply NACK. If the {\name} node receives a fast quorum of replies OK, it considers
+the update on the metadata with that version successful. To accelarate later get operations,
+the {\name} node sends out Commit requests to all datacenters, including those that
+have not replied or replied NACK, in the background. The commit request is also a conditional
+write; it updates the status of this version to committed, sets the highest committed
+version to this version if not higher, and finalize the location information of data
+fragments.
+
+The above one-round trip metadata path is refer as fast path (The commit is in background,
+so only PreAccept is counted as critical path). In the normal case without contention
+the fast path should always succeed (We will discuss the counter case later). After the
+fastpath is successful, the {\name} waits until the datapath finishes if it has not.
+After both of metadata and datapath finishes, the {\name} node can acknowledge the client.
+Assuming the across datacenter bandwidth is unbounded, the {\name} put operation commits
+in one wide-area roundtrip.
+
+\sm{Shuai: TODO, Discuss about the slow path.}
+In case of contention, the fast-path may not succeed. The contention may come from concurrent
+{\name} put operations on the same object, or a failure recovering {\name} node trying to
+re-commit the same or a different value to an ongoing version. 
+
+\sm{Shuai: TODO, Discuss about conditional write.}
+
+\subsubsection{Get}
+
+\subsection{Garbage Collection}
 
 
 \section{Reconfiguration}
@@ -78,4 +178,8 @@ The metadata for each object includes the latest modification to that object usi
 % \par
 % Describe the mechanism when a DC containing both data path and metadata path node fails (membership change).
 
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:
 
