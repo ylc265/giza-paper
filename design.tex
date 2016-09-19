@@ -27,15 +27,15 @@ This section will present the basic design of {\name}, including the overall arc
 the metadata schemes, and the protocols for supported operations in {\name}. 
 
 \subsection{Architecture}
-{\name} is designed for globe-scale cloud storage system that span across many datacenters across
+{\name} is designed for globe-scale cloud storage systems that span across many datacenters in
 the world. ~\Cref{fig:xxxx} shows a generic architecture of such systems, e.g. Windows Azure
-Storage. To maximize utilization of current systems, {\name} takes a local table service and
+Storage. To maximize utilization of existing implementation in the systems, {\name} takes a local table service and
 blob service as building blocks, to store metadata and data respectively. This evolutional
-design allows {\name} to minimize footprint of code, merely replacing the previous front-end
+design allows {\name} to minimize footprint of new code. In fact, {\name} merely needs to replace the previous front-end
 module. With {\name} deployed, the user request comes in to the new frontend, where the new
-service will translate the user requests into a few metadata operations and data operations.
+{\name} service will translate the user requests into a few metadata operations and data operations.
 
-In {\name}, both metadata and data blocks are synchronously duplicated across different
+In {\name}, both metadata and data are synchronously duplicated across different
 datacenters in order to tolerate datacenter failures. What is different bewteen metadata
 and data is, metadata is fully replicated across a (usually smaller) set of datacenters using
 a tailored Fast-Paxos algorithm, persistent in the table service in each datacenter, thus
@@ -45,7 +45,7 @@ persistent in the blob storage service. We refer the former as metadata path and
 as data path.
 
 \sm{
-Shuai: why we use 3 datacenters for metadata but 7 datacenters for data?
+ why we use 3 datacenters for metadata but 7 datacenters for data?
 }
 
 The separation of metadat path and datapth bring in the challenge that the consistency level
@@ -102,7 +102,7 @@ hash for each fragment, and use the hash value as key to write each fragment to 
 datacenter.
 
 \sm {
-  Shuai: Hi Daniel, can you give me a few details about the hashing? e.g. hashing method,
+  Hi Daniel, can you give me a few details about the hashing? e.g. hashing method,
   hashing result size, collision rate, etc.)
 }
 
@@ -134,14 +134,89 @@ After both of metadata and datapath finishes, the {\name} node can acknowledge t
 Assuming the across datacenter bandwidth is unbounded, the {\name} put operation commits
 in one wide-area roundtrip.
 
-\sm{Shuai: TODO, Discuss about the slow path.}
 In case of contention, the fast-path may not succeed. The contention may come from concurrent
 {\name} put operations on the same object, or a failure recovering {\name} node trying to
-re-commit the same or a different value to an ongoing version. 
+re-commit the same or a different value to an ongoing version. {\name} will fall back to
+classic Paxos to guarantee safety in case of contention.
 
-\sm{Shuai: TODO, Discuss about conditional write.}
+If a {\name} node cannot collect a fast quorum of OK acknowledgement for the PreAccept requests,
+or whenever a different {\name} node tries to do failure recover, it enters what is refered
+as \emph{slow path}.To begin with, the {\name} node will pick a distinguished ballot number
+that it thinks is large enough and send out a Prepare request with that ballot to all metatable
+tables and wait for at least a majority of responses. The Prepare request is a mix ofconditional
+update and read operation. Each read request should return the entire metadata row at corresponding
+datacenter. Upon a majority of replies, the {\name} needs to pick a value to try to commit.
+The rules for picking the value is as follows. First it looks for the highest accepted ballot
+in the replies. If there is one, the value from the reply is picked. If there is no accepted
+value, but there is pre-accepted value, the {\name} node will pick the pre-accepted value
+that appears more than others (if any) from the replies. If there is neither pre-accepted
+nor accepted value. The {\name} node can pick any value it wants, e.g. the value it receives
+from client or a \texttt{no-op} placeholder in failure recovery.
+
+After the {\name} node picks a value, it sends out Accept request to all metadata tables.
+An Accept request is a conditional update, if the max\_ballot\_seen is smaller, it updates
+the max\_ballot\_seen, writes the picked value to the version. After {\name} node collects
+a majority of successful acknowledgements for the Accept requests, it succeeds in writing
+the metadata and may return to the client after the datapath is also done. A commit phase
+similar to above is launched in background.
 
 \subsubsection{Get}
+When {\name} receives a get request, it decompose the request to metadata path and datapath
+as well, similar to the put operation. A regular (but slower) way to do this is serialize
+metadata path and datapath. Before retrieving the data fragments, the {\name} needs to
+retrive the get the metadata for the most recently committed version. While this is effective,
+it incurs at least one across datacenter roundtrip before it can starts to retrieve the
+actual data, which is also located in a different datacenter, which could hurt latency
+performance.
+
+Instead, {\name} chooses an optimistic style to parallelize the metadata and data path.
+On get request, a {\name} first read from local datacenter table service, requesting
+the metadata row. From the row it reads the highest\_committed\_version and its data
+fragments location information. Then it starts to read the data fragments from different
+datacenter. After enough pieces received, the {\name} node can reconstruct the original
+data and have it standby to reply to the client.
+
+Separately, the {\name} launches a metadata path to validate the version above is actually
+the correct version to read. It reads the metadata row from all datacenter and expect
+at least a majority of replies. If among the replies it has not observed any higher ongoing
+version that has any accepted value, the {\name} node can safely return the standby
+data because it is guaranteed to be the latest committed value.
+
+If unfortunately the {\name} node observes a higher version with accepted value in the
+replies, it needs to try a slowpath in the put operation above to confirm on that version
+because it could possibly be considered committed once before. After it succeed in
+the slow path, the {\name} node needs to re-launch the datapath to retrive the data
+fragments of the newer version and abandon the old ones. This serialized metadata and
+datapath case typically happens when there is concurrent read and write on the same
+object, which is rare in our workload.
+
+\sm{ Hi Daniel, just want to confirm, is this what you do now? Only one accepted
+  in higher version will invalidate the optimistic read}
+
+There is a rare case that a {\name} node could read a committed version from metadata,
+however the data fragments has not been written to the blob storage. This is due to
+the metadata path in the put operations could finish before the data path. In this case,
+the {\name} node in the get operation needs to recursively fall back to the previous
+version. That said, the highest\_committed\_version could either higher or lower than the actually
+``committed'' version.
+  
+\subsection{Conditional Write}
+The protocols above strongly depend on the conditional write feature provided by the
+table service. Some of the cloud providers already support this feature, such as Amazon.
+Other coud providers usually provide alternative functions. For example, as used in our
+experiments, Windows Azasure provides a function called ETag. An ETag works similar to
+a lease. It is generated at the table service side and returned to a table service client
+on a read request. The client could give the tag as an argument in later write operations,
+and the writes will only succeed if the row was not accessed by another client.
+
+For Azure-like system, {\name} implements conditional write based the ETag feature.
+However, an across datacenter conditional operation based ETag may still incur multiple
+roundtrips. To optimize the latency, we introduce the \emph{delegation} mechanism
+into {\name}. To issue an across site conditional operation, a {\name} node delegates the
+request to another {\name} node in the remote datacenter, the remote {\name} works as
+a proxy to finish the operation and returns the result. This optimization will largely
+reduce the latency result. Because all the requests can be safely abandoned and retried,
+the {\name} nodes are still stateless with delegation.
 
 \subsection{Garbage Collection}
 
