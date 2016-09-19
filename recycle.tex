@@ -13,3 +13,6 @@ Erasure Encoding is a very mature technique used in storage systems for data str
 %\subsection{}
 Project Giza stores erasure coded data objects across multiple geographically distributed data centers. It provides the same or higher level of durability than geo-replication, but at much reduced storage cost. Project Giza leverages existing cloud storage APIs and operates on the top of existing public clouds.
 
+\comment{With geo-replication, normal read operation is served from single primary data center, so there is no WAN traffic. In the event of data center failure, all reads can completely fail-over to the secondary data center, where there is again no stress on the WAN backbone. With cross-DC erasure coding, however, both normal reads and fail-over reads incur non-trivial WAN traffic.} 
+
+Complementary to today's cloud storage offerings, that store customer data within single data center, across multiple availability zones within a region, or even multiple geographically distributed data centers,
