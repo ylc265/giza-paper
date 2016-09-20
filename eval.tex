@@ -1,4 +1,11 @@
 \section{Evaluation}
+We benchmark Giza against CockroachDB, a globally distributed SQL database inspired by Google’s Spanner. Both CockroachDB and Giza share similar goals, mainly to provide strong consistency semantics to users while being able to tolerate data center outages. In addition, it is easy to implement the read and write path of Giza with database transaction. [But while we know this may not be a fair comparison since CockroachDB provides more functionality than Giza, we want to show that Giza cannot be implemented with existing systems].
+
+What type of results are presented and what are we trying to show through these results? We use YCSB to generate the following workload:
+- latency result from Giza and CockroachDB when there’s no read or write conflict. To show that if we were to choose an existing system and implement our scheme, our latency would still be better. 
+Also to show 2-1 scheme, 7-1 scheme, and world wide scheme
+
+- throughput and read latency graph of Giza. To show that we can tolerate contention when doing write heavy work.
 
 qustions to answer?
 
@@ -9,6 +16,15 @@ correctness under failures/network partitions.
  
 
 \subsection{Setup}
+For all experiments, we deployed a single virtual machine (how many cores, how many whatever) for each geographical region to act as the front end for the regional data center. In addition, The virtual machines are deployed through the console provided by the cloud computing platform. 
+
+How did we set up Giza?
+
+We deployed both a table service and a blob service provided by the cloud platform for each geographical region. The granularity of replication for these services varies from provider to provider but we always choose the replication level to match that of the regional replication. This means that as long as there’s no dc outage, the data would not be lost. On top of each table service and blob service, we also run a front end interface for the table and blob service respectively. This is to avoid unnecessary WAN round trip when executing metadata path logic. The Giza node interacts with table and blob service front end via Thrift RPC calls, sending the appropriate metadata and data to other regions.  
+
+How did we set up CockroachDB?
+
+We run a CockroachDB cluster spanning all the data centers included in the experiment where each node correspond to the virtual machine running on each geographical region. We use a single database of CockroachDB to emulate our Giza read and write path. The database contains multiple tables, a metadata table and multiple data tables corresponding to their respective region, and the tables differ in their replication level. The metadata table is replicated according to the fault tolerance level, i.e 2 if the the cluster can tolerate one data center outage [what about the location?]. The data table is replicated once only at the node of the respective region.
 *machines*
 
 *workloads ycsb*
