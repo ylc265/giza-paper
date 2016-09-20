@@ -63,12 +63,12 @@ scheme. The metadata of an object is a row with a unfixed number of columns, as 
 in~\Cref{fig:xxxxx}. {\name} uses a version number to distinguish overwrites upon the same
 object, so the metadata contains a column \texttt{highest\_committed\_version}, which is
 a hint of which version is the latest modification, a.k.a. the decided version. It is named
-as \texttt{highest\_committed\_version} rather than \textt{highest\_version} to avoid the
+as \texttt{highest\_committed\_version} rather than \texttt{highest\_version} to avoid the
 ambiguity that the version may not be highest \emph{ongoing} version. Actually, the
 \texttt{highest\_committed\_version} may not even be the real highest committed version at
 the moment, but rather a hint that this version is possbily the highest committed version.
 
-In addition to the \textt{highest\_committed\_version}, the metadata needs to store the
+In addition to the \texttt{highest\_committed\_version}, the metadata needs to store the
 location information of data fragment for each version. The location information contains
 the coding configurations, which datacenters store the original/parity fragments, the keys
 to retrieve those fragments in each blob service.

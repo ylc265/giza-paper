@@ -161,19 +161,19 @@
 %%%%%%%%%%%%%%%%%%%%%
 % accept
 %%%%%%%%%%%%%%%%%%%%%
-\begin{algorithm}
-  \DontPrintSemicolon
-  \SetArgSty{textrm}
-  %safe log ($T$, $p$) on first execute \;
-  \If{Table[key].accepted\char`_value is empty and {\em ballot} = 0 or Table[key].ballot \leq {\em ballot} } {
-      Table[key].accepted\char`_value \LAR {\em value}\;
-	  Table[key].ballot \LAR {\em ballot}\;
-	  Table[key].accepted\char`_number \LAR {\em ballot}\;
-	  \Return {\em Accept-OK}
-  }\Else {
-      \Return {\em Accept-NotOK}
-  }
-  \caption{Server $S$::\sc{Accept}($key$, $value$, $ballot$)}
-  \label{alg:accept}
-\end{algorithm}
+% \begin{algorithm}
+%   \DontPrintSemicolon
+%   \SetArgSty{textrm}
+%   %safe log ($T$, $p$) on first execute \;
+%   \If{Table[key].accepted\char`_value is empty and {\em ballot} = 0 or Table[key].ballot \leq {\em ballot} } {
+%       Table[key].accepted\char`_value \LAR {\em value}\;
+% 	  Table[key].ballot \LAR {\em ballot}\;
+% 	  Table[key].accepted\char`_number \LAR {\em ballot}\;
+% 	  \Return {\em Accept-OK}
+%   } \Else {
+%       \Return {\em Accept-NotOK}
+%   }
+%   \caption{Server $S$::\sc{Accept}($key$, $value$, $ballot$)}
+%   \label{alg:accept}
+% \end{algorithm}
 
