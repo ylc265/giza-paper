@@ -1,20 +1,11 @@
 \section{Evaluation}
-We benchmark Giza against CockroachDB, a globally distributed SQL database inspired by Google’s Spanner. Both CockroachDB and Giza share similar goals, mainly to provide strong consistency semantics to users while being able to tolerate data center outages. In addition, it is easy to implement the read and write path of Giza with database transaction. [But while we know this may not be a fair comparison since CockroachDB provides more functionality than Giza, we want to show that Giza cannot be implemented with existing systems].
+Giza provides fault tolerance through erasure coding across wide area networks while providing linearizability for its read and write operations. As such, there are currently no system that is specifically designed to serve as an alternative to Giza. However, we benchmark Giza’s performance against Cassandra and CockroachDB to illustrate the following points:
 
-What type of results are presented and what are we trying to show through these results? We use YCSB to generate the following workload:
-- latency result from Giza and CockroachDB when there’s no read or write conflict. To show that if we were to choose an existing system and implement our scheme, our latency would still be better. 
-Also to show 2-1 scheme, 7-1 scheme, and world wide scheme
+- In the common case, Giza’s Fast Paxos implementation of the metadata phase allows for lower latency writes for Giza when compared to Cassandra.
 
-- throughput and read latency graph of Giza. To show that we can tolerate contention when doing write heavy work.
+- While one could implement Giza’s metadata phase and data phase as a single distributed transaction, we illustrate through CockroachDB that doing so will degrade performance significantly.
 
-qustions to answer?
-
-performance with difference sized object and with different contention level.
- -latency result, single node throughput
-
-correctness under failures/network partitions.
- 
-
+In addition, we provide evaluation results for encoding scheme ranging from 2-1 in 3 data centers to 18-4 in 22 data centers to illustrate the flexibility of Giza as a front end.
 \subsection{Setup}
 For all experiments, we deployed a single virtual machine (how many cores, how many whatever) for each geographical region to act as the front end for the regional data center. In addition, The virtual machines are deployed through the console provided by the cloud computing platform. 
 
