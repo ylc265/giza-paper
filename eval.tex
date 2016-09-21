@@ -7,22 +7,19 @@ Giza provides fault tolerance through erasure coding across wide area networks w
 
 In addition, we provide evaluation results for encoding scheme ranging from 2-1 in 3 data centers to 18-4 in 22 data centers to illustrate the flexibility of Giza as a front end.
 \subsection{Setup}
-For all experiments, we deployed a single virtual machine (how many cores, how many whatever) for each geographical region to act as the front end for the regional data center. In addition, The virtual machines are deployed through the console provided by the cloud computing platform. 
+For all experiments, we deployed a single virtual machine (16 cores, 56 GB of RAM, 800 GB SSD, and gigabit ethernet) for each geographical region. We use the same virtual machines for setting up the Cassandra and CockroachDB clusters. The client issuing the requests runs on one of the virtual machine that is also part of the cluster. 
+To set up Giza, we also had to deployed both a table service and a blob service provided by the cloud service platform. The granularity of replication for these services varies from provider to provider but we always choose the replication level to match that of the regional replication. This means that as long as there’s no dc outage, the data would not be lost. For each data center, we run a Giza node frontend with the virtual machine. The Giza node can service requests from a client running in the virtual machine. In addition, requests to its local table and blob storage from other Giza nodes also go through the Giza node frontend in the form of an RPC call. This is to avoid unecessary WAN round trips when dealing with complicated table and blob storage operations. 
 
-How did we set up Giza?
+How did we set up Cassandra?
 
-We deployed both a table service and a blob service provided by the cloud platform for each geographical region. The granularity of replication for these services varies from provider to provider but we always choose the replication level to match that of the regional replication. This means that as long as there’s no dc outage, the data would not be lost. On top of each table service and blob service, we also run a front end interface for the table and blob service respectively. This is to avoid unnecessary WAN round trip when executing metadata path logic. The Giza node interacts with table and blob service front end via Thrift RPC calls, sending the appropriate metadata and data to other regions.  
+This is how we set up Cassandra.
 
 How did we set up CockroachDB?
 
 We run a CockroachDB cluster spanning all the data centers included in the experiment where each node correspond to the virtual machine running on each geographical region. We use a single database of CockroachDB to emulate our Giza read and write path. The database contains multiple tables, a metadata table and multiple data tables corresponding to their respective region, and the tables differ in their replication level. The metadata table is replicated according to the fault tolerance level, i.e 2 if the the cluster can tolerate one data center outage [what about the location?]. The data table is replicated once only at the node of the respective region.
 *machines*
 
-*workloads ycsb*
-
-*performance metrics: latency, cpu*
-
-*is it possible to choose real workload?*
+We generate our workloads using the YCSB benchmark. Since our systems function as key value blob storage, we only require one field, the blob value, for each key. The probability that a given key will be accessed is given by the Zipfian distribution. We evaluated our systems with different blob value sizes. The smaller sizes include 64KB, 128KB, 256KB, and 512 KB while the bigger sizes include 1MB, 2MB, 4MB, and 8MB. We also evaluated them under different read/write ratios, including equal-shares and all writes.
 
 
 \subsection{Small object}
