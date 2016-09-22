@@ -26,33 +26,71 @@
 This section will present the basic design of {\name}, including the overall architecture,
 the metadata schemes, and the protocols for supported operations in {\name}. 
 
-\subsection{Architecture}
-{\name} is designed for globe-scale cloud storage systems that span across many datacenters in
-the world. ~\Cref{fig:xxxx} shows a generic architecture of such systems, e.g. Windows Azure
-Storage. To maximize utilization of existing implementation in the systems, {\name} takes a local table service and
-blob service as building blocks, to store metadata and data respectively. This evolutional
-design allows {\name} to minimize footprint of new code. In fact, {\name} merely needs to replace the previous front-end
-module. With {\name} deployed, the user request comes in to the new frontend, where the new
-{\name} service will translate the user requests into a few metadata operations and data operations.
+\subsection{Overview and challenges}
 
-In {\name}, both metadata and data are synchronously duplicated across different
-datacenters in order to tolerate datacenter failures. What is different bewteen metadata
-and data is, metadata is fully replicated across a (usually smaller) set of datacenters using
-a tailored Fast-Paxos algorithm, persistent in the table service in each datacenter, thus
-tolerating a minority of failures; On the other hand, data in user request is encoded to
-a configurable number of fragments and shipped to a (usually larger) set of datacenters,
-persistent in the blob storage service. We refer the former as metadata path and the latter
-as data path.
+{\paragraph Architecture}
+{XXX: need a picture showing the architecture. The picture shows that Giza uses existing 
+cloud services.}
+This paragraph discusses the overall approach. On the data-path, object data is
+coded into several fragments, named by their content hashes, and stored in the
+blob storage of different DCs.   On the meta-data path, \name stores the set of
+content hashes of coded fragments as meta-data of the object.
+
+{\name} is a global-scale cloud storage systems that span across many
+datacenters in the world.  \name stores mutable, versioned objects.
+~\Cref{fig:xxxx} shows the architecture of \name.  To support mutable coded
+objects, \name separates the data path from meta-data path.  On the data-path,
+object data is coded into several fragments, named by their content hashes, and
+stored in the different DCs.   On the meta-data path, \name stores the set of
+content hashes of coded fragments as the new version information for the object.
+
+We take the approach to layer giza on top of existing cloud storage infrastructure, to take 
+advantage of deployed systems.  These existing cloud storage systems have
+redundancy within a single data center, but are not geo-replicated.  Thus,
+\name must explicitly provide cross data center redundancy through coding and
+replication.  On the data path, {\name} stores coded fragments in cloud blob
+stores in different data centers, such as Azure's blob store, or Amazon's S3.
+On the meta-data path, \name stores version information in existing cloud
+tables and replicates them across several data centers.  The number of coded
+fragments, and thus the set of data centers storing object data, is
+configurable depending on the user desired tradeoff on durability vs. cost.
+The number of data center to replicate the meta-data is fixed at 3.
+
+%blob service as building blocks, to store metadata and data respectively. This evolutional
+%design allows {\name} to minimize footprint of new code. In fact, {\name} merely needs to replace the previous front-end
+%module. With {\name} deployed, the user request comes in to the new frontend, where the new
+%{\name} service will translate the user requests into a few metadata operations and data operations.
+%
+%In {\name}, both metadata and data are synchronously duplicated across different
+%datacenters in order to tolerate datacenter failures. What is different bewteen metadata
+%and data is, metadata is fully replicated across a (usually smaller) set of datacenters using
+%a tailored Fast-Paxos algorithm, persistent in the table service in each datacenter, thus
+%tolerating a minority of failures; On the other hand, data in user request is encoded to
+%a configurable number of fragments and shipped to a (usually larger) set of datacenters,
+%persistent in the blob storage service. We refer the former as metadata path and the latter
+%as data path.
+
+
+{\paragraph Technical challenges:}
+{XXX: first challenge is how to build a strongly consistent, geo-replicated meta-data storage
+on existing single-DC cloud tables.  Argue that no existing service satisfies our needs.
+}
+
+{XXX: second challenge is to jointly optimize the data and meta-data path to achieve a single 
+roundtrip per write, read}
+
+{XXX: third challenge is proper garbage collection?}
+
 
 \sm{
  why we use 3 datacenters for metadata but 7 datacenters for data?
 }
 
-The separation of metadat path and datapth bring in the challenge that the consistency level
-could be violated with brutal yet flawed merge of the two. Our protocols described in later
-sections will guarantee the metadata path and data path together (especially when they are
-fully concurrent) will still provide a strong consistency ensurance.
-
+%The separation of metadat path and datapth bring in the challenge that the consistency level
+%could be violated with brutal yet flawed merge of the two. Our protocols described in later
+%sections will guarantee the metadata path and data path together (especially when they are
+%fully concurrent) will still provide a strong consistency ensurance.
+%
 
 
 % A typical giza architecture for a data center includes the giza nodes, the Azure Blob Storage, and the Azure Table Storage. The giza nodes are the processing units of the Giza architecture and manages the data and the metadata. Furthermore the giza nodes participate in paxos rounds as coordinators. Figure 1 illustrates the architecture of Giza. Giza separates data from metadata and handles them on different paths. The data path is responsible for encoding the data and sending the data fragments across data centers. Each data fragment is stored in the corresponding DC’s Azure Blob Storage. The metadata path is responsible for storing the latest version of the data and the location of its data fragments. Giza uses a variant of the Paxos state machine replication (SMR) to maintain consistency of the metadata where each metadata server maintains a local copy of the replicated log. The replicated log is stored in the Azure Table Storage.
