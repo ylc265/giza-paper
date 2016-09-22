@@ -21,6 +21,7 @@ We run a CockroachDB cluster spanning all the data centers included in the exper
 
 We generate our workloads using the YCSB benchmark. Since our systems function as key value blob storage, we only require one field, the blob value, for each key. The probability that a given key will be accessed is given by the Zipfian distribution. We evaluated our systems with different blob value sizes. The smaller sizes include 64KB, 128KB, 256KB, and 512 KB while the bigger sizes include 1MB, 2MB, 4MB, and 8MB. We also evaluated them under different read/write ratios, including equal-shares and all writes.
 
+\subsection{Read/Write Latency}
 
 \subsection{Small object}
 64K $\sim$ 16MB
