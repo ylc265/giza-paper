@@ -219,7 +219,7 @@ reduce the latency result. Because all the requests can be safely abandoned and 
 the {\name} nodes are still stateless with delegation.
 
 \subsection{Garbage Collection}
-Because {\giza} keeps writing new version metadata to table service and data fragments
+Because {\name} keeps writing new version metadata to table service and data fragments
 to blob storage service, it needs to garbage collect on outdated versions to recycle
 storage space. Moreover, the garbage collection also needs to free the space marked as
 tombstone by the delete operation.
@@ -239,7 +239,7 @@ brutaly, another put operation on the same key may bring the system into an abno
 state. The new put operation will start with the initial version again, which could
 violate some of the metadata (with a much higer version) if the removing is still in
 process. Therefore, {\name} chooses to use two-phase commit when to remove the metadata
-row. In the first phase, it marks the rows in all datacenters as ``prepared_to_delete''.
+row. In the first phase, it marks the rows in all datacenters as ``prepared\_to\_delete''.
 After this any other get or put operations are temporarily disabled on this row. Then
 in the second phase, all the rows are actually removed from the table service. The
 disadvantage for this approach is that it requires all datacenters online. Any crashed
