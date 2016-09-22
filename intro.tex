@@ -55,17 +55,19 @@ Figure~\ref{fig:giza_example} illustrates the flow of storing a customer data ob
 
 \subsection{Challenges and Contributions}
 
-With Giza, even in the event of one or multiple data center failure, the customers are able to continuously access existing data objects, update them, or write new ones.
+The target workloads for Giza are large data objects in cloud drives, such as Dropbox, Microsoft OneDrive, Google Drive, etc. The common properties of such workloads include: 1) large storage space consumption, 2) relatively cold data, where a small percentage of data is occasionally accessed across large volumes, 3) objects may be updated over time, but concurrent updates of the same object is very rare.
 
-Giza supports concurrent gets and puts. While the blob storage and nosql table storage within individual data centers operate independently, Giza coordinates all the accesses so as to achieve external consistency (linerizability).
+Given the target workloads, Giza optimizes for the common case, where there is single writer (and multiple readers). Giza strives to {\em make the common case fast}. In fact, the most optimized version of Giza achieves optimal write latency, which is single WAN RTT for {\em put}.
 
-The workloads that Giza target don't have high concurrency. This means that single reader / writer is the common case and Giza strives to {\em make the common case fast}. On the other hand, concurrency do arise in various situations, such as in the event of failures or uncommon usage. Even though concurrency is a rare case, Giza {\em guarantees the rare case correct}. The technical challengue is how to achieve both efficient access in the common case and ensure correctness during the concurrent access, even in the event of massive data center failure.
+On the other hand, Giza does handle concurrency properly, which could arise in various situations. For instance, Giza tolerates data center failure. In the event of one or multiple data centers become temporarily unavailable (or simply slow), the customer are able to continue to read and write data objects without much impact. The unavailable (or slow) data centers may miss updates, which could potentially lead to conflict when receiving new updates again. Also, retry of {\em put} operation could be routed to a different DC and therefore conflict with the previously unfinished {\em put}. Therefore, even though concurrency is rare, it is crucial for Giza to {\em guarantee the rare case correct}. Indeed, Giza provides external consistency (linearizability).
 
-Towards this end, we have made the following contributions:
+Giza operates on the top of existing cloud storage system. It stores data in blob storage and metadata in nosql table storage across multiple data centers. The blob storage and nosql table storage within individual data centers operate independently. Hence, while strongly consistent individually, the collection of blob and table storage across DCs do not readily offer the desired linearizability. The key technical challenge Giza addresses is how to achieve optimal {\em put} latency with single writer, while at the same time provide linearizability under concurrency, over the collection of individual blob and table storage across multiple DCs.
+
+Towards this end, the paper makes the following contributions:
 \begin{itemize}
     \item We have designed and implemented Giza, which provides a versioned object store that erasure codes data objects and stores them across globally distributed data centers.
     \item Giza is fast in the common case: when there is no concurrency, Giza completes within single WAN RTT, which is optimal given the requirement to tolerate data center failure.
-    \item Giza is correct when accessed concurrently: even with data center failure, Giza achieves external consistency (linearizability).
-    \item Giza employs well-known distributed algorithms, such as Paxos and Fast Paxos, in a novel way so that it operates on the top of exsiting public cloud storage systems.
+    \item Giza is correct when accessed concurrently: even with data center failure, Giza achieves external consistency.
+    \item Giza employs well-known distributed algorithms, such as Paxos and Fast Paxos, in a novel way so that it operates on the top of existing public cloud storage systems.
     \item Giza is deployed in xxx data centers. Trace-driven experiments demonstrate that Giza achieve all our design goals. In particular, it is worth pointing out that Giza achieves much lower latency than naively adopting a globally consistent storage system, like Google's spanner.
 \end{itemize}
