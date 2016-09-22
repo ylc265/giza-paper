@@ -219,11 +219,35 @@ reduce the latency result. Because all the requests can be safely abandoned and 
 the {\name} nodes are still stateless with delegation.
 
 \subsection{Garbage Collection}
+Because {\giza} keeps writing new version metadata to table service and data fragments
+to blob storage service, it needs to garbage collect on outdated versions to recycle
+storage space. Moreover, the garbage collection also needs to free the space marked as
+tombstone by the delete operation.
+
+Recycling the old versions data includes deleting the data and parity fragments and
+truncating the columns for the old versions in the metadata row. Garbage collection
+for an object follows three steps: 1) read the metadata row and get the columns to
+delete based on the \texttt{hightest\_committed\_version}. 2) send delete requests to
+blob storage service to delete the data. 3) remove the columns for the old versions
+in the table service. The second step has to happen before the third in case that the
+garbage collection process is interrupped and the data fragments may become ``orphens''
+without proper metadata to point to them in the table service.
+
+After a delete operation, {\name} sees the row marked as tombstone by a special column.
+Now it needs to remove the entire row, which requires extra care. Otherwise if removed
+brutaly, another put operation on the same key may bring the system into an abnormal
+state. The new put operation will start with the initial version again, which could
+violate some of the metadata (with a much higer version) if the removing is still in
+process. Therefore, {\name} chooses to use two-phase commit when to remove the metadata
+row. In the first phase, it marks the rows in all datacenters as ``prepared_to_delete''.
+After this any other get or put operations are temporarily disabled on this row. Then
+in the second phase, all the rows are actually removed from the table service. The
+disadvantage for this approach is that it requires all datacenters online. Any crashed
+datacenter or network partition may pause the process and makes the row unavailable
+(but can still continue or recovered after the failure is eliminated). 
 
 
 \section{Reconfiguration}
-
-
 \subsection{Datacenter Failures}
 
 \subsection{Viewchange}
