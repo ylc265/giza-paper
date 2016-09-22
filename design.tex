@@ -62,7 +62,7 @@ The number of data center to replicate the meta-data is fixed at 3.
 %{\name} service will translate the user requests into a few metadata operations and data operations.
 %
 %In {\name}, both metadata and data are synchronously duplicated across different
-%datacenters in order to tolerate datacenter failures. What is different bewteen metadata
+%datacenters in order to tolerate datacenter failures. What is different between metadata
 %and data is, metadata is fully replicated across a (usually smaller) set of datacenters using
 %a tailored Fast-Paxos algorithm, persistent in the table service in each datacenter, thus
 %tolerating a minority of failures; On the other hand, data in user request is encoded to
@@ -86,10 +86,10 @@ roundtrip per write, read}
  why we use 3 datacenters for metadata but 7 datacenters for data?
 }
 
-%The separation of metadat path and datapth bring in the challenge that the consistency level
+%The separation of metadata path and datapath bring in the challenge that the consistency level
 %could be violated with brutal yet flawed merge of the two. Our protocols described in later
 %sections will guarantee the metadata path and data path together (especially when they are
-%fully concurrent) will still provide a strong consistency ensurance.
+%fully concurrent) will still provide a strong consistency insurance.
 %
 
 
@@ -104,7 +104,7 @@ a hint of which version is the latest modification, a.k.a. the decided version. 
 as \texttt{highest\_committed\_version} rather than \texttt{highest\_version} to avoid the
 ambiguity that the version may not be highest \emph{ongoing} version. Actually, the
 \texttt{highest\_committed\_version} may not even be the real highest committed version at
-the moment, but rather a hint that this version is possbily the highest committed version.
+the moment, but rather a hint that this version is possibly the highest committed version.
 
 In addition to the \texttt{highest\_committed\_version}, the metadata needs to store the
 location information of data fragment for each version. The location information contains
@@ -115,7 +115,7 @@ The metadata row is replicated in a number of datacenters using a variant of Fas
 algorithm. Instead of storing the states of Fast-Paxos elsewhere, {\name} made a design
 choice to use the metadata row itself as a durable space to hold the Fast-Paxos states.
 The advantage of this choice is that {\name} can reuse the table service as the persistence
-layer for the state machine replication, making {\name} nodes themself stateless. As a
+layer for the state machine replication, making {\name} nodes themselves stateless. As a
 result, {\name} node has much less to worry about failure recovery. When a {\name} node
 is (suspiciously) failing, a new {\name} node can be launched as an replacement without
 doing extra work to nullify the previous node. The new node can directly access the table
@@ -134,7 +134,7 @@ of disk content happens at garbage collection, which will be described in ~\Cref
 
 \subsubsection{Put}
 
-When the {\name} node receives a put request, it encodes the data to $k$ originial fragments
+When the {\name} node receives a put request, it encodes the data to $k$ original fragments
 and $m$ parity fragments. $k$ and $m$ are configurable. Then the node computes a content
 hash for each fragment, and use the hash value as key to write each fragment to a separate
 datacenter.
@@ -154,10 +154,10 @@ optimistic fashion. It first reading the highest\_committed\_version in the loca
 then use it plus one as the chosen version number.
 
 With version number chosen, the {\name} node sends out a PreAccept request to the table
-service in each datacenter. The reqeust is a conditional update, if the metadata row
+service in each datacenter. The request is a conditional update, if the metadata row
 does not see any other update request on that version, it will acknowledge OK, otherwise
 it will reply NACK. If the {\name} node receives a fast quorum of replies OK, it considers
-the update on the metadata with that version successful. To accelarate later get operations,
+the update on the metadata with that version successful. To accelerate later get operations,
 the {\name} node sends out Commit requests to all datacenters, including those that
 have not replied or replied NACK, in the background. The commit request is also a conditional
 write; it updates the status of this version to committed, sets the highest committed
@@ -178,10 +178,10 @@ re-commit the same or a different value to an ongoing version. {\name} will fall
 classic Paxos to guarantee safety in case of contention.
 
 If a {\name} node cannot collect a fast quorum of OK acknowledgement for the PreAccept requests,
-or whenever a different {\name} node tries to do failure recover, it enters what is refered
+or whenever a different {\name} node tries to do failure recover, it enters what is referred
 as \emph{slow path}.To begin with, the {\name} node will pick a distinguished ballot number
-that it thinks is large enough and send out a Prepare request with that ballot to all metatable
-tables and wait for at least a majority of responses. The Prepare request is a mix ofconditional
+that it thinks is large enough and send out a Prepare request with that ballot to all metadata
+tables and wait for at least a majority of responses. The Prepare request is a mix of conditional
 update and read operation. Each read request should return the entire metadata row at corresponding
 datacenter. Upon a majority of replies, the {\name} needs to pick a value to try to commit.
 The rules for picking the value is as follows. First it looks for the highest accepted ballot
@@ -202,7 +202,7 @@ similar to above is launched in background.
 When {\name} receives a get request, it decompose the request to metadata path and datapath
 as well, similar to the put operation. A regular (but slower) way to do this is serialize
 metadata path and datapath. Before retrieving the data fragments, the {\name} needs to
-retrive the get the metadata for the most recently committed version. While this is effective,
+get the metadata for the most recently committed version. While this is effective,
 it incurs at least one across datacenter roundtrip before it can starts to retrieve the
 actual data, which is also located in a different datacenter, which could hurt latency
 performance.
@@ -268,14 +268,14 @@ for an object follows three steps: 1) read the metadata row and get the columns 
 delete based on the \texttt{hightest\_committed\_version}. 2) send delete requests to
 blob storage service to delete the data. 3) remove the columns for the old versions
 in the table service. The second step has to happen before the third in case that the
-garbage collection process is interrupped and the data fragments may become ``orphens''
+garbage collection process is interrupted and the data fragments may become ``orphans''
 without proper metadata to point to them in the table service.
 
 After a delete operation, {\name} sees the row marked as tombstone by a special column.
 Now it needs to remove the entire row, which requires extra care. Otherwise if removed
-brutaly, another put operation on the same key may bring the system into an abnormal
+brutally, another put operation on the same key may bring the system into an abnormal
 state. The new put operation will start with the initial version again, which could
-violate some of the metadata (with a much higer version) if the removing is still in
+violate some of the metadata (with a higher version before the deletion) if the removing is still in
 process. Therefore, {\name} chooses to use two-phase commit when to remove the metadata
 row. In the first phase, it marks the rows in all datacenters as ``prepared\_to\_delete''.
 After this any other get or put operations are temporarily disabled on this row. Then
