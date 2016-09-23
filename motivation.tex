@@ -4,24 +4,25 @@
 \comment{
 \subsection{Giza: Flexible Cross-DC erasure coding }
 
-Erasure coding across geo-graphically distributed data centers is a most effective approach to reduce storage cost while achieving the fault tolerance goal of being able to survive data center failure. As Facebook's F4 system~\ref{bib:F4} has demonstrated, replacing geo-replication with cross-DC erasure coding can effectively reduce storage overhead from 3.6x to 2.1x, achieving huge savings for Facebook's 65PB of warm storage. While a fixed 2 + 1 solution works very well for Facebook's special workload, the public cloud storage desires much more flexibility. Different customers have different desirable operating points in terms of cost, durability and latency trade-off and are willing to accept different pricing for different needs. 
+Erasure coding across geo-graphically distributed data centers is a most effective approach to reduce storage cost while achieving the fault tolerance goal of being able to survive data center failure. As Facebook's F4 system~\ref{bib:F4} has demonstrated, replacing geo-replication with cross-DC erasure coding can effectively reduce storage overhead from 3.6x to 2.1x, achieving huge savings for Facebook's 65PB of warm storage. While a fixed 2 + 1 solution works very well for Facebook's special workload, the public cloud storage desires much more flexibility. Different customers have different desirable operating points in terms of cost, durability and latency trade-off and are willing to accept different pricing for individual needs. 
 
-Giza provide completes flexibility to the customers. When a storage account is created, the customers may specify how much fault tolerance is desired at the storage account level. In addition, the customers had additional flexibility to specific which data centers are involved, so that they could constraint all the data to be in the United States per data sovereignty requirement and regulation, or they could choose to disperse the erasure coded data across multiple continent, so that no single country could gain access to the complete data. 
+Giza provide completes flexibility to the customers. When a storage account is created, the customers may specify how much fault tolerance is desired at the storage account level. In addition, the customers had additional flexibility to specify which data centers are involved, so that they could constraint all the data to be in the United States per data sovereignty requirement and regulation, or they could choose to disperse the erasure coded data across multiple continents, so that no single country could gain access to the complete data. 
 
-The fault tolerance requirement and the data center involved in turn determine the erasure coding scheme applied. The default configuration applies $k+1$ erasure coding, where each data object is divided into $k$ data fragments and $1$ single parity fragment is generated from the $k$ data fragments. Here, all the $k+1$ fragments are persisted in $k+1$ data centers. In addition to the default configuration, the customer could create storage accounts with {\em enhanced durability}, where 2 parity fragments are generated from the $k$ data fragments. The resulted $k+2$ erasure coding scheme would tolerate arbitrary 2 data center failures and therefore achieve much higher durability than the standard solution. As shown in the below table~\ref{tab:cost_benefit}, compared to the geo-replication, the enhanced durability is able to achieve much higher durability while still reducing storage cost.
+
 }
 
 \subsection{Storage, Bandwidth and Durability}
 
-Giza allows the customers to specify the set of data centers for each storage account. Given the flexibility, the customers may choose to store data in different DCs within one single country (or continent), due to the requirement and regulation of data sovereignty. Alternatively, they may choose to disperse data across DCs over multiple countries (or even multiple continents), so that no single country could gain access to the data in its entirety. 
-
 Giza also allows the customers to choose erasure coding scheme, which results in different operating points in terms of storage overhead, bandwidth cost and durability. 
 
+The default configuration applies $k+1$ erasure coding, where each data object is divided into $k$ data fragments and $1$ single parity fragment is generated from the $k$ data fragments. Here, all the $k+1$ fragments are persisted in $k+1$ data centers. In addition to the default configuration, the customer could create storage accounts with {\em enhanced durability}, where 2 parity fragments are generated from the $k$ data fragments. The resulted $k+2$ erasure coding scheme would tolerate arbitrary 2 data center failures and therefore achieve much higher durability than the standard solution eventhough it has a much lower storage cost. 
+
+The cost-benefit analysis of Giza can be shown in Table~\ref{tab:cost_benefit}.
 To tolerate single data center failure, geo-replication requires storage overhead of $2\times1.3$x = 2.6x (where single DC storage overhead is 1.3x). With $k+1$ erasure coding, where $k$ ranges from 2 to 5, Giza reduces the storage overhead from 1.9x to 1.5x, a reduction of 27\% to 42\%. In addition to comparable durability as geo-replication, the customers could instead choose $k+2$ erasure coding, which tolerates two data center failures and achieves much higher durability. Yet, the storage overhead is much less than geo-replication, at 2.1x to 1.9x (a reduction of 19\% to 27\%). As summarized Table~\ref{tab:cost_benefit}, compared to geo-replication, Giza achieves comparable durability with significantly reduced storage overhead, or much higher durability with substantial reduction in storage overhead.
 
-Nevertheless, the reduction in storage overhead comes at the additional cost of inflated WAN traffic, for both read/write during normal operation and access/rebuild during the event of data center failure. 
-
 \subsubsection{Same WAN Traffic for Put}
+
+Nevertheless, the reduction in storage overhead comes at the additional cost of inflated WAN traffic, for both read/write during normal operation and access/rebuild during the event of data center failure.
 
 Let's revisit the example of putting a 4MB data object. In geo-replication, in addition to storing the object in a local DC, the same object is replicated across WAN and stored in a remote DC. Therefore, this incurs 1x of WAN traffic. Giza, with $2 + 1$ erasure coding, divides the data object into $a$, $b$ and generates parity $p$ with 2MB each. It stores $a$ in the local DC and $b$, $p$ in two remote DCs. Note that the amount of WAN traffic is again 1x. Same argument applies to other $k+1$ erasure coding scheme. Hence, the cross-WAN traffic is the same for both cross-DC erasure coding and geo-replication.
 
@@ -29,9 +30,9 @@ The analysis is readily extensible to $k+2$ schemes. As shown in Table~\ref{tab:
 
 \subsubsection{Inflated WAN Traffic for Get and Rebuild}
 
-In geo-replication, since each DC has the full copy of the data object. A {\em get} request can the local DC and incur no WAN traffic. On the other hand, with $2+1$ erasure coding, Giza can only obtain half the object from the local DC. Accessing the other half from a remote DC always incurs WAN traffic, which leads 0.5x unit of WAN traffic for the {\em put} request. Generalizing the argument, Table~\ref{tab:cost_benefit} shows the higher $k$ is (in $k+1$ erasure coding), the higher WAN traffic {\em get} incurs.
+In geo-replication, since each DC has the full copy of the data object. A {\em get} request can access the local DC and incur no WAN traffic. On the other hand, with $2+1$ erasure coding, Giza can only obtain half the object from the local DC. Accessing the other half from a remote DC always incurs WAN traffic, which leads 0.5x unit of WAN traffic for the {\em put} request. Generalizing the argument, Table~\ref{tab:cost_benefit} shows the higher $k$ is (in $k+1$ erasure coding), the higher WAN traffic {\em get} incurs.
 
-After a data center fails catastrophically, customer data originally stored at the failed DC needs to be rebuilt at a new DC. Geo-replication simply replicates every data object and thus incurs 1x of WAN traffic for rebuilding. Giza, on the other hand, requires erasure coding reconstruction to rebuild the missing fragment of every data object, which incurs $k$ times WAN traffic for all $k+r$ erasure coding schemes.
+After a data center fails catastrophically, customer data originally stored at the failed DC needs to be rebuilt at a new DC. Geo-replication simply replicates every data object and thus incurs 1x of WAN traffic for rebuilding. Giza, on the other hand, requires erasure coding to reconstruct the missing fragment of every data object, which incurs $k$ times WAN traffic for all $k+r$ erasure coding schemes.
 
 \begin{table*}[thp]
 \centering
