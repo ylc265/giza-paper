@@ -51,6 +51,12 @@ The customers access Giza with straightforward {\em put}/{\em get}/{\em delete} 
 
 Giza operates on the top of existing cloud storage system and leverages public APIs. It uses blob storage to store customer data and NoSQL table storage to store metadata.
 
+\begin{figure}[tp]
+\centering
+\includegraphics[width=0.5\textwidth]{images/giza_example_crop_fit}
+\caption{Store Object in Giza}
+\end{figure}
+
 Figure~\ref{fig:giza_example} illustrates the flow of storing a customer data object. Giza operates a number of {\em stateless} Giza nodes in every data center. Say a customer uses a Giza client (command line, library, or REST interface) to store a 4MB data object. The Giza client routes the {\em put} request to one of the Giza nodes in the data center closest to the customer. The Giza node divides the data object into $2$ data fragments ($a$ and $b$) of 2MB each. It then invokes erasure coding and generates a parity fragment $p$ of size 2MB. The Giza node stores all the $3$ fragments (2 data and 1 parity) in the blob storage in 3 data centers (1 local and 2 remote). It also stores the metadata, consisting of the pointers to the blob storage, as well as versioning information, in the NoSQL table storage in the 3 data centers.
 
 \subsection{Challenges and Contributions}
