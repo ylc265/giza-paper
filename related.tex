@@ -5,3 +5,17 @@
 %%% TeX-master: "main"
 %%% End:
 
+{\bf Erasure coded storage.}
+There are two general approaches in applying erasure coding to storage.  One
+is to generate coded fragments within each data object.  This is commonly used
+to achieve redundancy within a single data center~\cite{facebook:f4}.  Another 
+approach is to treat multiple data objects as a coding group and generate
+parity blocks that combine multiple objects.  Facebook's cross-DC erasure
+coding uses this scheme to code immutable blobs.  To handle mutable coded
+blocks, prior work resort to a RAID-like approach~\cite{haibo:fast} of using
+static coding groups comprising of fixed sized blocks. The RAID approach has
+only been applied in cluster settings.
+
+
+{\bf Consistency in mutable storage.}
+
