@@ -5,7 +5,22 @@
 %%% TeX-master: "main"
 %%% End:
 
-{\bf Erasure coded storage.}
+{\bf Erasure Coded Storage:}
+Weatherspoon et al. make a strong case for erasure coded storage systems~\ref{weatherspoon2002erasure}. They demonstrate that such systems consume an order of magnitude less bandwidth and storage to provide similar durability as replicated systems.
+
+OceanStore~\ref{OceanStore, bib:pond} employs erasure coding and encryption to achieve a global-scale persistent storage. It assumes a fundamentally untrusted infrastructure. To achieve strong consistency, OceanStore serializes updates via a primary tier of replicas, a generalized form of primary. These primary replicas cooperate in a Byzantine agreement protocol to choose the final commit order for the updates. In comparison, Giza operates in a trusted environment and employs leaderless consensus protocols. Updates may originate from arbitrary data centers and still complete with optimal latency. There is no need to relay all the updates through the primaries.
+
+HAIL~\ref{Bowers:2009:HHI:1653662.1653686}, RACS~\ref{Abu-Libdeh:2010:RCC:1807128.1807165} and NCCloud~\ref{hu2012nccloud} all stripe and erasure code data across multiple cloud storage providers. 
+HAIL~\ref{Bowers:2009:HHI:1653662.1653686} applies error correction coding within individual providers and erasure coding across them. It is designed to withstand Byzantine adversaries and unifies proofs of retrievability and failure recovery. Giza operates in trustworthy environment and exploits the trade-off among storage cost, network bandwidth and durability.
+
+RACS~\ref{Abu-Libdeh:2010:RCC:1807128.1807165} 
+%tolerates outages and mitigates vendor lock-in with reasonable overhead cost. It 
+builds a working system that is compatible with existing cloud storage clients and able to use multiple storage providers as back-ends.
+It addresses the conflict caused by concurrent writers using Apache ZooKeeper~\ref{zookeeper}, where readers-writer locks are implemented at per-key granularity to synchronize distributed RACS proxies.
+Giza, on the other hand, implements consensus algorithms for individual keys and achieves strong consistency without centralized coordinators.
+
+NCCloud~\ref{hu2012nccloud} advances state-of-the-art on erasure coding and implements a class of functional regenerating codes~\ref{bib:regenerating_code} that optimize cross-WAN repair bandwidth. Giza employs standard Reed-Solomon coding and leaves innovation on erasure coding to future exploration. 
+
 There are two general approaches in applying erasure coding to storage.  One
 is to generate coded fragments within each data object.  This is commonly used
 to achieve redundancy within a single data center~\cite{facebook:f4}.  Another 
