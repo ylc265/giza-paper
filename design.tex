@@ -28,33 +28,37 @@ the metadata schemes, and the protocols for supported operations in {\name}.
 
 \subsection{Overview and challenges}
 
-{\paragraph Architecture}
-{XXX: need a picture showing the architecture. The picture shows that Giza uses existing 
-cloud services.}
-This paragraph discusses the overall approach. On the data-path, object data is
-coded into several fragments, named by their content hashes, and stored in the
-blob storage of different DCs.   On the meta-data path, \name stores the set of
-content hashes of coded fragments as meta-data of the object.
+\begin{figure}[tp]
+\centering
+\includegraphics[width=0.5\textwidth]{fig/Giza}
+\caption{Giza architecture\label{fig:arch}}
+\end{figure}
 
+\paragraph{Architecture}
 {\name} is a global-scale cloud storage systems that span across many
 datacenters in the world.  \name stores mutable, versioned objects.
-~\Cref{fig:xxxx} shows the architecture of \name.  To support mutable coded
+~\Cref{fig:arch} shows the architecture of \name.  To support mutable coded
 objects, \name separates the data path from meta-data path.  On the data-path,
 object data is coded into several fragments, named by their content hashes, and
 stored in the different DCs.   On the meta-data path, \name stores the set of
 content hashes of coded fragments as the new version information for the object.
 
-We take the approach to layer giza on top of existing cloud storage infrastructure, to take 
-advantage of deployed systems.  These existing cloud storage systems have
-redundancy within a single data center, but are not geo-replicated.  Thus,
-\name must explicitly provide cross data center redundancy through coding and
-replication.  On the data path, {\name} stores coded fragments in cloud blob
-stores in different data centers, such as Azure's blob store, or Amazon's S3.
-On the meta-data path, \name stores version information in existing cloud
-tables and replicates them across several data centers.  The number of coded
-fragments, and thus the set of data centers storing object data, is
-configurable depending on the user desired tradeoff on durability vs. cost.
-The number of data center to replicate the meta-data is fixed at 3.
+We take the approach to layer \name on top of existing cloud storage infrastructure. This 
+provides two advantages.  First, doing so allows the rapid prototyping of \name by re-using 
+mature, deployed systems.  Second, it simplifies the failure recovery and 
+the deployment of \name, as \name servers are completely stateless and can be
+readily integrated with the rest of the stateless cloud storage frontend.
+Existing cloud storage systems have redundancy within a single data center, but
+are not geo-replicated.  Thus, \name must explicitly provide cross data center
+redundancy through coding and replication.  To write to an object, {\name}
+stores coded fragments in cloud blob stores in different data centers, such as
+Azure's blob store, or Amazon's S3.  Additionally, \name updates the object's
+meta-data information (e.g.  versions, names of coded fragments for the new
+content) in existing cloud tables and replicates them across several data
+centers.  The number of coded fragments, and thus the set of data centers
+storing object data, is configurable depending on the user desired tradeoff on
+durability vs. cost.  The number of data centers to replicate the meta-data is
+fixed at 3.
 
 %blob service as building blocks, to store metadata and data respectively. This evolutional
 %design allows {\name} to minimize footprint of new code. In fact, {\name} merely needs to replace the previous front-end
@@ -71,20 +75,26 @@ The number of data center to replicate the meta-data is fixed at 3.
 %as data path.
 
 
-{\paragraph Technical challenges:}
-{XXX: first challenge is how to build a strongly consistent, geo-replicated meta-data storage
-on existing single-DC cloud tables.  Argue that no existing service satisfies our needs.
-}
+\paragraph{Technical challenges}
+In designing \name, we address three main technical challenges facing the basic approach.
+\begin{enumerate}
 
-{XXX: second challenge is to jointly optimize the data and meta-data path to achieve a single 
-roundtrip per write, read}
+\item {\it Building a strongly consistent, geo-replicated meta-data storage out of existing 
+single-DC cloud tables.}  There are existing geo-replicated,
+strongly-consistently storage systems (Cassandra, CockcoarchDB) that have been
+built from the scratch.  However, we choose not to use them because we want to
+keep \name servers stateless and keep all data and meta-data in existing
+storage infrastructure that are operated by cloud providers. The common
+technique to ensure strong consistency is to implement the Paxos protocol.  How
+to implement Paxos using existing cloud storage APIs and achieve 
+good performance in the cross-DC setting?
 
-{XXX: third challenge is proper garbage collection?}
+\item {\it Jointly optimizing the data and meta-data paths to achieve a single
+cross-DC roundtrip for each operation.}
 
+\item {\it Performing garbage collection efficiently and promptly.}
 
-\sm{
- why we use 3 datacenters for metadata but 7 datacenters for data?
-}
+\end{enumerate}
 
 %The separation of metadata path and datapath bring in the challenge that the consistency level
 %could be violated with brutal yet flawed merge of the two. Our protocols described in later
@@ -95,7 +105,11 @@ roundtrip per write, read}
 
 % A typical giza architecture for a data center includes the giza nodes, the Azure Blob Storage, and the Azure Table Storage. The giza nodes are the processing units of the Giza architecture and manages the data and the metadata. Furthermore the giza nodes participate in paxos rounds as coordinators. Figure 1 illustrates the architecture of Giza. Giza separates data from metadata and handles them on different paths. The data path is responsible for encoding the data and sending the data fragments across data centers. Each data fragment is stored in the corresponding DC’s Azure Blob Storage. The metadata path is responsible for storing the latest version of the data and the location of its data fragments. Giza uses a variant of the Paxos state machine replication (SMR) to maintain consistency of the metadata where each metadata server maintains a local copy of the replicated log. The replicated log is stored in the Azure Table Storage.
 
-\subsection{Metadata Schemes}
+\subsection{Implementing Paxos using Cloud Storage APIs}
+
+On the meta-data path, a \name node implements the Paxos protocol.
+
+{\bf Meta-data storage layout.}
 Before going into the protocols of {\name} operations, we first demonstrate our metadata
 scheme. The metadata of an object is a row with a unfixed number of columns, as shown
 in~\Cref{fig:xxxxx}. {\name} uses a version number to distinguish overwrites upon the same
@@ -111,6 +125,11 @@ location information of data fragment for each version. The location information
 the coding configurations, which datacenters store the original/parity fragments, the keys
 to retrieve those fragments in each blob service.
 
+{\bf Meta-data Update.}
+
+{\bf Meta-data Read.}
+
+{\bf The FastPaxos optimization.}
 The metadata row is replicated in a number of datacenters using a variant of Fast-Paxos
 algorithm. Instead of storing the states of Fast-Paxos elsewhere, {\name} made a design
 choice to use the metadata row itself as a durable space to hold the Fast-Paxos states.
@@ -121,10 +140,9 @@ is (suspiciously) failing, a new {\name} node can be launched as an replacement 
 doing extra work to nullify the previous node. The new node can directly access the table
 service to work. 
 
-
 %The metadata for each object includes the latest modification to that object using a versioning scheme. The highest version corresponds to the latest modification and the decided value for the version. In addition, the metadata also includes the location of the data fragments for the latest version. The metadata is replicated using a variant of the Paxos state machine replication. Instead of having a single log recording all the executions, each object has a corresponding paxos log. Giza uses the fault-tolerant Azure Table to store the metadata where each entry in the table corresponds to an object. Figure 2 illustrates the schema of the metadata table. 
 
-\subsection{{\name} Operations}
+\subsection{Joint optimization of Data and Meta-date Operations}
 
 {\name} supports three operations: put, get and delete. All of them require a key as
 an argument to identify an object. put takes object content as an extra argument, get
