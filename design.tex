@@ -256,7 +256,7 @@ returns object content (null if non-exist) as result. A delete operation is proc
 as a special write, putting a tombstone in the object's metadata. The actual recycling
 of disk space happens at garbage collection, which will be described in ~\Cref{sec:xxxx}.
 
-\bf{The Put Operation:}
+{\bf The Put Operation:}
 After calculating the coded framents, the \name node launches both data and
 metapath paths in parallel.  To ensure that data is written durably in multiple
 DCs, the \name node waits for both the metadata and the data path to finish
@@ -265,7 +265,7 @@ the Paxos commit phase after the data path completes. In other words, \name
 ensures that {\tt known\_committed\_version} only refers to fragments
 that have been successfully written to their intended DCs.
  
-\bf{The Get Operation:}
+{\bf The Get Operation:}
 The naive way to perform Get is to first reads the latest metadata and then retrieves 
 the coded framents. 
 To cut down cross-DC latencies, {\name} chooses an optimistic approach to parallelize the metadata and data path.
