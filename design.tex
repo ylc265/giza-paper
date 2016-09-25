@@ -90,9 +90,18 @@ to implement Paxos using existing cloud storage APIs and achieve
 good performance in the cross-DC setting?
 
 \item {\it Jointly optimizing the data and meta-data paths to achieve a single
-cross-DC roundtrip for each operation.}
+cross-DC roundtrip for read/write operations.}  Under the naive approach, the
+data and meta path are treated completely separately; a
+\name node completes the data path first before starting on the meta-data path.
+While doing so guarantees that data is durably written at multiple DCs before it becomes
+readable, each read/write operation takes at least two cross-DC. Can \name 
+combine data and metadata path operations to achieve a single cross-DC roundtrip?
 
-\item {\it Performing garbage collection efficiently and promptly.}
+\item {\it Performing garbage collection efficiently and promptly.}  When data is 
+over-written and deleted, \name must remove obsolete data and/or meta-data from
+the underlying cloud storage.  This is non-trivial because \name's garbage 
+collection mechanism must be able to handle DC failures while ensuring data 
+consistency and durability.
 
 \end{enumerate}
 
@@ -107,101 +116,78 @@ cross-DC roundtrip for each operation.}
 
 \subsection{Implementing Paxos using Cloud Storage APIs}
 
-On the meta-data path, a \name node implements the Paxos protocol.
+On the meta-data path, \name implements the Paxos protocol on top of existing cloud table storage, such 
+as Amazon DynamoDB or Azure Tables.
+
+\begin{figure}[tp]
+\centering
+\includegraphics[width=0.5\textwidth]{fig/Giza_Metadata}
+\caption{For each object, \name stores the Paxos protocol state and the object meta-data 
+in a single row in the underlying cloud table.\label{fig:metadata}}
+\end{figure}
 
 {\bf Meta-data storage layout.}
-Before going into the protocols of {\name} operations, we first demonstrate our metadata
-scheme. The metadata of an object is a row with a unfixed number of columns, as shown
-in~\Cref{fig:xxxxx}. {\name} uses a version number to distinguish overwrites upon the same
-object, so the metadata contains a column \texttt{highest\_committed\_version}, which is
-a hint of which version is the latest modification, a.k.a. the decided version. It is named
-as \texttt{highest\_committed\_version} rather than \texttt{highest\_version} to avoid the
-ambiguity that the version may not be highest \emph{ongoing} version. Actually, the
-\texttt{highest\_committed\_version} may not even be the real highest committed version at
-the moment, but rather a hint that this version is possibly the highest committed version.
+\name uses the Paxos protocol to serialize the operation on each data object.  Thus, it 
+must keep Paxos protocol state together with the metadata for each object. Instead of storing the Paxos state elsewhere, {\name} makes the design
+choice to store the Paxos state together with the metadata itself,
+one row per object, with a dynamic number of columns. The layout of each row is
+shown in~\Cref{fig:metadata}.  
 
-In addition to the \texttt{highest\_committed\_version}, the metadata needs to store the
-location information of data fragment for each version. The location information contains
-the coding configurations, which datacenters store the original/parity fragments, the keys
-to retrieve those fragments in each blob service.
+Each \name write operation generates a new
+object version, which is associated with an instance of Paxos invocation to
+ensure consistency in the event of races among multiple writers and failures.
+Thus, the meta-data contains a triplet of columns for each version of object
+(~\Cref{fig:metadata}). The triplet includes {\tt highest\_proposal\_seen},
+{\tt highest\_accepted\_proposal}, and {\tt highest\_accepted\_value}.  These
+fields are necessary for running each instance of Paxos.  The {\tt
+highest\_accepted\_value} for a version contains the meta-data information for
+coded data fragments; these include the name of each fragment, wehther it is
+one of the original or parity fragments, and which DC it is stored at. 
 
-{\bf Meta-data Update.}
+{\name} uses the {\tt known\_committed\_version} to represents the highest 
+version number known to have committed by Paxos.  This provides a hint on the latest 
+modification rather than a decisive answer, since there might be a higher
+\emph{ongoing} version that has just reached agreement.  
 
-{\bf Meta-data Read.}
-
-{\bf The FastPaxos optimization.}
-The metadata row is replicated in a number of datacenters using a variant of Fast-Paxos
-algorithm. Instead of storing the states of Fast-Paxos elsewhere, {\name} made a design
-choice to use the metadata row itself as a durable space to hold the Fast-Paxos states.
-The advantage of this choice is that {\name} can reuse the table service as the persistence
-layer for the state machine replication, making {\name} nodes themselves stateless. As a
-result, {\name} node has much less to worry about failure recovery. When a {\name} node
-is (suspiciously) failing, a new {\name} node can be launched as an replacement without
-doing extra work to nullify the previous node. The new node can directly access the table
-service to work. 
-
-%The metadata for each object includes the latest modification to that object using a versioning scheme. The highest version corresponds to the latest modification and the decided value for the version. In addition, the metadata also includes the location of the data fragments for the latest version. The metadata is replicated using a variant of the Paxos state machine replication. Instead of having a single log recording all the executions, each object has a corresponding paxos log. Giza uses the fault-tolerant Azure Table to store the metadata where each entry in the table corresponds to an object. Figure 2 illustrates the schema of the metadata table. 
-
-\subsection{Joint optimization of Data and Meta-date Operations}
-
-{\name} supports three operations: put, get and delete. All of them require a key as
-an argument to identify an object. put takes object content as an extra argument, get
-returns object content (null if non-exist) as result. A delete operation is processed
-as a special write, putting a tombstone in the object's metadata. The actual recycling
-of disk content happens at garbage collection, which will be described in ~\Cref{sec:xxxx}.
-
-\subsubsection{Put}
-
-When the {\name} node receives a put request, it encodes the data to $k$ original fragments
-and $m$ parity fragments. $k$ and $m$ are configurable. Then the node computes a content
-hash for each fragment, and use the hash value as key to write each fragment to a separate
-datacenter.
-
-\sm {
-  Hi Daniel, can you give me a few details about the hashing? e.g. hashing method,
-  hashing result size, collision rate, etc.)
-}
-
-Concurrently with the above data path, the giza node enters a metadata path to persist
-the metadata into the table service in each datacenter. The metadata path begins with
-choosing a proper version number to run the Fast-Paxos algorithm. The version number needs
-to be the next version to the most recent committed version. It is safe to use an outdated
-version (in which case the {\name} node will be noticed later and retry with a higher one),
+{\bf Meta-data Write.}
+The metadata path begins with
+choosing a proper version number to run the Fast-Paxos~\cite{fastpaxos} algorithm. The version number needs
+to be the next version to the most recently committed version.  While it is safe to use an outdated
+version (in which case the {\name} node will notice its mistake later and retry with a higher one),
 but it is unsafe to choose a higher one. {\name} node finds the proper version in an
-optimistic fashion. It first reading the highest\_committed\_version in the local table,
-then use it plus one as the chosen version number.
+optimistic fashion. Specifically, it reads the {\tt known\_committed\_version} from the
+table in its local DC, then uses the next higher number as the chosen version number to 
+invoke the corrresponding Fast Paxos instance.
 
-With version number chosen, the {\name} node sends out a PreAccept request to the table
-service in each datacenter. The request is a conditional update, if the metadata row
-does not see any other update request on that version, it will acknowledge OK, otherwise
-it will reply NACK. If the {\name} node receives a fast quorum of replies OK, it considers
-the update on the metadata with that version successful. To accelerate later get operations,
-the {\name} node sends out Commit requests to all datacenters, including those that
-have not replied or replied NACK, in the background. The commit request is also a conditional
-write; it updates the status of this version to committed, sets the highest committed
-version to this version if not higher, and finalize the location information of data
-fragments.
+With the version number chosen, the {\name} node sends out a PreAccept request to the cloud table
+in each DC. The request is an atomic conditional update, if there are no other 
+requests on that version, the write for the PreAccept request will be successful, otherwise
+the corresponding write will be rejected by the table service. If the {\name} node receives a fast quorum of successful PreAccept requests, the
+corresponding version is considered to have been committed. The {\name} node asynchronously 
+sends out Commit requests to all DCs to modify the {\tt known\_committed\_version} field to 
+reflect the recently committed version.  The commit request is also a
+conditional write; the write only succeeds if the current {\tt
+known\_committed\_version} is not does not contain a higher version.
 
-The above one-round trip metadata path is refer as fast path (The commit is in background,
-so only PreAccept is counted as critical path). In the normal case without contention
-the fast path should always succeed (We will discuss the counter case later). After the
-fastpath is successful, the {\name} waits until the datapath finishes if it has not.
-After both of metadata and datapath finishes, the {\name} node can acknowledge the client.
-Assuming the across datacenter bandwidth is unbounded, the {\name} put operation commits
-in one wide-area roundtrip.
+The above described metadata update involves only one cross-DC roundtrip (the
+commit is done in the background, so only the PreAccept is counted as part of
+the critical path) and is referred to as the fast path.  When there is no
+contention, the fast path always succeeds. 
 
-In case of contention, the fast-path may not succeed. The contention may come from concurrent
-{\name} put operations on the same object, or a failure recovering {\name} node trying to
-re-commit the same or a different value to an ongoing version. {\name} will fall back to
-classic Paxos to guarantee safety in case of contention.
+In the case of contention, the fast-path may not succeed, i.e. the {\name} node
+cannot collect a fast quorum of successful PreAccept requests. The contention
+may come from concurrent updates to the same object, or a {\name} node trying
+to recover from failures by re-committing the same or a different value to an
+ongoing version.  In this case, {\name} enters what is referred to as
+\emph{slow path} to perform classic Paxos in order to guarantee safety in case of
+contention.
 
-If a {\name} node cannot collect a fast quorum of OK acknowledgement for the PreAccept requests,
-or whenever a different {\name} node tries to do failure recover, it enters what is referred
-as \emph{slow path}.To begin with, the {\name} node will pick a distinguished ballot number
-that it thinks is large enough and send out a Prepare request with that ballot to all metadata
-tables and wait for at least a majority of responses. The Prepare request is a mix of conditional
-update and read operation. Each read request should return the entire metadata row at corresponding
-datacenter. Upon a majority of replies, the {\name} needs to pick a value to try to commit.
+On the slow path, the {\name} node first picks a distinguished ballot number
+and then sends out a Prepare request to write that ballot to all metadata
+tables and wait for at least a majority of responses. The Prepare request is a conditional
+write operation; the write operation succeeds if the {\tt highest\_ballot\_seen} is not higher than 
+the ballot in the Prepare request and it also returns the entire row as a result.
+Upon a majority of successful replies, the {\name} needs to pick a value to try to commit.
 The rules for picking the value is as follows. First it looks for the highest accepted ballot
 in the replies. If there is one, the value from the reply is picked. If there is no accepted
 value, but there is pre-accepted value, the {\name} node will pick the pre-accepted value
@@ -210,33 +196,22 @@ nor accepted value. The {\name} node can pick any value it wants, e.g. the value
 from client or a \texttt{no-op} placeholder in failure recovery.
 
 After the {\name} node picks a value, it sends out Accept request to all metadata tables.
-An Accept request is a conditional update, if the max\_ballot\_seen is smaller, it updates
-the max\_ballot\_seen, writes the picked value to the version. After {\name} node collects
-a majority of successful acknowledgements for the Accept requests, it succeeds in writing
-the metadata and may return to the client after the datapath is also done. A commit phase
-similar to above is launched in background.
+The accept request is a conditional update; it succeeds in writing the {\tt
+highest\_accepted\_ballot} and {\tt highest\_accepted\_value} if neither {\tt
+highest\_ballot\_seen} and {\tt hightest\_accepted\_ballot} are larger.  If a
+majority of Accept requests succeeds, the \name node considers the
+corresponding meta-data write as complete and may return to the client.
+Additionally, a commit phase similar to one described above is launched in
+background.
 
-\subsubsection{Get}
-When {\name} receives a get request, it decompose the request to metadata path and datapath
-as well, similar to the put operation. A regular (but slower) way to do this is serialize
-metadata path and datapath. Before retrieving the data fragments, the {\name} needs to
-get the metadata for the most recently committed version. While this is effective,
-it incurs at least one across datacenter roundtrip before it can starts to retrieve the
-actual data, which is also located in a different datacenter, which could hurt latency
-performance.
-
-Instead, {\name} chooses an optimistic style to parallelize the metadata and data path.
-On get request, a {\name} first read from local datacenter table service, requesting
-the metadata row. From the row it reads the highest\_committed\_version and its data
-fragments location information. Then it starts to read the data fragments from different
-datacenter. After enough pieces received, the {\name} node can reconstruct the original
-data and have it standby to reply to the client.
-
-Separately, the {\name} launches a metadata path to validate the version above is actually
-the correct version to read. It reads the metadata row from all datacenter and expect
-at least a majority of replies. If among the replies it has not observed any higher ongoing
-version that has any accepted value, the {\name} node can safely return the standby
-data because it is guaranteed to be the latest committed value.
+{\bf Metadata Read.}
+To read the \emph{latest} metadata of an object, it is not sufficient that the \name node 
+only reads the corresponding metadata row from its local DC, since the local DC
+might not be part of the majority quarum that has accepted the latest value.
+The \name node reads from the metadata rows from all three DCs.  If a majority
+rows have matching {\tt known\_committed\_version} $k$ and have not accepted
+any value for a version higher than $k$, then the \name node returns the
+metadata for version $k$ to the client.
 
 If unfortunately the {\name} node observes a higher version with accepted value in the
 replies, it needs to try a slowpath in the put operation above to confirm on that version
@@ -249,30 +224,74 @@ object, which is rare in our workload.
 \sm{ Hi Daniel, just want to confirm, is this what you do now? Only one accepted
   in higher version will invalidate the optimistic read}
 
-There is a rare case that a {\name} node could read a committed version from metadata,
-however the data fragments has not been written to the blob storage. This is due to
-the metadata path in the put operations could finish before the data path. In this case,
-the {\name} node in the get operation needs to recursively fall back to the previous
-version. That said, the highest\_committed\_version could either higher or lower than the actually
-``committed'' version.
-  
-\subsection{Conditional Write}
-The protocols above strongly depend on the conditional write feature provided by the
-table service. Some of the cloud providers already support this feature, such as Amazon.
-Other coud providers usually provide alternative functions. For example, as used in our
-experiments, Windows Azasure provides a function called ETag. An ETag works similar to
-a lease. It is generated at the table service side and returned to a table service client
-on a read request. The client could give the tag as an argument in later write operations,
-and the writes will only succeed if the row was not accessed by another client.
 
-For Azure-like system, {\name} implements conditional write based the ETag feature.
-However, an across datacenter conditional operation based ETag may still incur multiple
-roundtrips. To optimize the latency, we introduce the \emph{delegation} mechanism
-into {\name}. To issue an across site conditional operation, a {\name} node delegates the
-request to another {\name} node in the remote datacenter, the remote {\name} works as
-a proxy to finish the operation and returns the result. This optimization will largely
-reduce the latency result. Because all the requests can be safely abandoned and retried,
-the {\name} nodes are still stateless with delegation.
+%The metadata row is replicated in a number of datacenters using a variant of Fast-Paxos
+%algorithm. Instead of storing the states of Fast-Paxos elsewhere, {\name} made a design
+%choice to use the metadata row itself as a durable space to hold the Fast-Paxos states.
+%The advantage of this choice is that {\name} can reuse the table service as the persistence
+%layer for the state machine replication, making {\name} nodes themselves stateless. As a
+%result, {\name} node has much less to worry about failure recovery. When a {\name} node
+%is (suspiciously) failing, a new {\name} node can be launched as an replacement without
+%doing extra work to nullify the previous node. The new node can directly access the table
+%service to work. 
+
+%The metadata for each object includes the latest modification to that object using a versioning scheme. The highest version corresponds to the latest modification and the decided value for the version. In addition, the metadata also includes the location of the data fragments for the latest version. The metadata is replicated using a variant of the Paxos state machine replication. Instead of having a single log recording all the executions, each object has a corresponding paxos log. Giza uses the fault-tolerant Azure Table to store the metadata where each entry in the table corresponds to an object. Figure 2 illustrates the schema of the metadata table. 
+
+\subsection{Joint optimization of Data and Meta-date Operations}
+
+The data path of \name is straighforward: the \name node encodes the data to $k$ original
+fragments and $m$ parity fragments. $k$ and $m$ are configurable. Then the node
+computes a content hash for each fragment, and use the hash value as key to
+write each fragment to a separate datacenter.  In the naive combination of data
+path and metadata path, the \name node serializes the two paths,
+resulting in at least two cross-DC roundtrips.  We design \name to reduce
+latency by running the data and metadata paths in parallel.  This is
+potentially problematic because either the data or metadata path could fail
+while the other one succeeds.  Below, we describe the end-to-end client
+operations and how they address this challenge.
+
+{\name} supports three operations: put, get and delete. All of them require a key as
+an argument to identify an object. put takes object content as an extra argument, get
+returns object content (null if non-exist) as result. A delete operation is processed
+as a special write, putting a tombstone in the object's metadata. The actual recycling
+of disk space happens at garbage collection, which will be described in ~\Cref{sec:xxxx}.
+
+\bf{The Put Operation:}
+After calculating the coded framents, the \name node launches both data and
+metapath paths in parallel.  To ensure that data is written durably in multiple
+DCs, the \name node waits for both the metadata and the data path to finish
+before returning to the client.  Furthermore, the \name node only starts 
+the Paxos commit phase after the data path completes. In other words, \name 
+ensures that {\tt known\_committed\_version} only refers to fragments
+that have been successfully written to their intended DCs.
+ 
+\bf{The Get Operation:}
+The naive way to perform Get is to first reads the latest metadata and then retrieves 
+the coded framents. 
+To cut down cross-DC latencies, {\name} chooses an optimistic approach to parallelize the metadata and data path.
+On a Get request, the {\name} node first reads from the corresponding metadata row from the table in the local DC
+to obtain the {\tt known\_committed\_version} and the corresponding coded 
+fragments location information. Then it immediately starts reading the data fragments from different
+datacenters.  Separately, the {\name} launches a regular metadata read to validate that the version it uses is actually
+the correct latest version. If the validation fails, i.e. the \name node
+has to redo its data path by fetching a different set of data fragments,
+resulting in wasted efforts in its previous data fetch.  Such potential waste
+only happens when there is concurrent read and write on the same object, which
+is rare in our workload.
+
+Because the data and metadata paths are performed in parallel during Puts,
+there is a rare case that the data fragments for the latest committed version
+have not been written to the blob storage at the time of read. This happens if 
+the metadata path in the corresponding Put finishes before the data path. In
+this case, the {\name} node in the get operation needs to fall back to read the
+previous version, up to the version specified in {\tt
+known\_committed\_version} $k$ as $k$ is only written when the corresponding
+data path has completed.
+
+\sm {
+  Hi Daniel, can you give me a few details about the hashing? e.g. hashing method,
+  hashing result size, collision rate, etc.)
+}
 
 \subsection{Garbage Collection}
 Because {\name} keeps writing new version metadata to table service and data fragments
