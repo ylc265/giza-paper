@@ -5,12 +5,12 @@
 %%% TeX-master: "main"
 %%% End:
 
+{\bf Erasure Coding in Cluster Storage:}
 Weatherspoon et al. establish a strong case for erasure coded storage systems~\ref{weatherspoon2002erasure}. They demonstrate that such systems consume an order of magnitude less bandwidth and storage to provide similar durability as replicated systems.
 
-{\bf Erasure Coding in Cluster Storage:}
 Erasure coding has long been applied in many large-scale distributed storage systems~\ref{bib:saito2004fab, bib:zhang2004repstore, haeberlen2005glacier, bib:abd2005ursa, welch2008scalable, sathiamoorthy2013xoring, zhang2016efficient}, including productions systems at Facebook~\ref{borthakur2010hdfs}, Google~\ref{fikes2010storage, ford2010availability} and Microsoft Azure~\ref{huang2012erasure}. These solutions generalize the RAID approach~\ref{patterson1988case, wilkes1996hp} to a distributed cluster setting. Giza synchronously replicates erasure coded data across WAN. Since the latency across WAN is much higher than in a cluster, Giza focuses on minimizing round trips so as to optimize latency. In addition, Giza provides globally consistent {\em get} and {\em put} with versioning support.
 
-{\bf Erasure Coding across WAN Storage:}
+{\bf Erasure Coding in Wide Area Storage:}
 OceanStore \ref{OceanStore, bib:pond} employs erasure coding and encryption to achieve a global-scale persistent storage. It assumes a fundamentally untrusted infrastructure. To achieve strong consistency, OceanStore serializes updates via a primary tier of replicas, a generalized form of primary. These primary replicas cooperate in a Byzantine agreement protocol to choose the final commit order for the updates. In comparison, Giza operates in a trusted environment and employs leaderless consensus protocols. Updates may originate from arbitrary data centers and still complete with optimal latency. There is no need to relay all the updates through the primaries.
 
 HAIL~\ref{Bowers:2009:HHI:1653662.1653686}, RACS~\ref{Abu-Libdeh:2010:RCC:1807128.1807165} and NCCloud~\ref{hu2012nccloud} all stripe and erasure code data across multiple cloud storage providers. 
@@ -38,9 +38,10 @@ static coding groups comprising of fixed sized blocks. The RAID approach has
 only been applied in cluster settings.
 }
 
-{\bf Separating Data from Metadata:}
+{\bf Separating Data and Metadata:}
+Storage systems separate data and metadata due to various reasons. FARSITE~\ref{adya2002farsite} and Ceph~\ref{weil2006ceph} maintain separate metadata service for high scalability. Gnothi~\ref{wang2012gnothi} achieves efficiency and availability by replicating metadata to all replicas while data blocks only to a subset of the replicas. Cocytus~\ref{zhang2016efficient} is a highly available in-memory KV-store that applies replication to metadata and erasure coding to data so as to achieve memory efficiency.
+Giza leverages separate cloud storage primitives, where data is stored in blob storage and metadata in NoSQL table storage.
 
-
-{\bf Consistency in Global Storage}
-MDCC, Mencius
+{\bf Consistency in Global Storage:}
+Primary-backup, MDCC, Mencius, Spanner
 
