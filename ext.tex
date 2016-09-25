@@ -3,12 +3,11 @@ This section discusses about relatively rare cases that happen in {\name}
 and how {\name} handle these cases. Because the main protocols are designed
 to guarantee safety with contention and any minority of failures, it is much
 easier to handle cases such as failure recovery, viewchange, migration etc.
-
 \subsection{Failure Recovery}
 
 Failures in {\name} are mainly in two catogeries: {\name} node failures and
 datacenter failures. If a {\name} node stops responding or is malfunctioning,
-we simply launch a new machine to took over its responsibility, and send a
+we simply launch a new machine to take over its responsibility, and send a
 signal to shut it down. Note that the new node does not need to wait until
 the shutdown to finish. That said, both the new and previous nodes could be
 alive in the systems. This is okay because the {\name} protocols already
@@ -19,11 +18,11 @@ respond to any signals at all since it is malfunctioning).
 {\name} assumes the table service and blob storage service are reliable.
 Any errors related to these, e.g. unable to read or write, are considered
 as datacenter failures in {\name}. These failures can be caused by multiple
-reasons, such as a temporary network partition or a entire datacenter breakdown.
+reasons, such as a temporary network partition or an entire datacenter breakdown.
 In such cases {\name} can still make progress as long as there are enough
 datacenter left. It is worth noticing that the threshold could be different for
 metadata path and data path. For metadata, a majority of alive datacenters
-are required. For datapath, assume it writes to $N$ datacenters in total with
+are required. For data path, assume it writes to $N$ datacenters in total with
 $m$ data fragments. To tolerate $F$ datacenter failures, it needs to write
 to at least $F+m$ datacenters, which implies that $F<N-m$ (To tolerate $F$
 failures, you need to have at least $F$ parities).
@@ -34,10 +33,40 @@ A number of recovering clients are launched to scan through its objects.
 For each object, it issues a normal read request except that it does not
 pre-fetch the data. If the local version match the global version, nothing
 needs to be done; if the local version is behind, the recovering process
-then reads the latest data fragments, recaculate the fragment that belongs
-to the local datacenter and write it to the blob storage consistently with
+then reads the latest data fragments, re-calcuates the fragment that belongs
+to the local datacenter and writes it to the blob storage consistently with
 the metadata.
 
-\subsection{Viewchange}
+\subsection{View change}
+Each {\name} account has a \emph{view}, which stores membership information
+including the datacenter set to replicate metadata and the set to store the
+data fragments. The view is created when the storage account is created,
+assigned by user preferences. For example, an OneDrive-like application may
+create a number of {\name} accounts, each of which stores data for users
+in a geographical region. The application could set up these accounts to
+choose a few datacenters that are close to that region for better user
+experience.
 
-\subsection{Migration}
+Occasionaly {\name} users might need to change the view to a different set
+of datacenters. For instance, a datacenter might have permanently crashed,
+or the application simply wants to use a faster location. For each storage
+account, {\name} stores the view as a special key in the metadata table.
+When it receives a viewchange request, {\name} goes into a gracing period.
+In this period, it writes the new view to the metadata table and tries to
+invalidate the cache in all {\name} nodes. In the gracing period, it is
+possible that different nodes hold different views. They may read or write
+different set of datacenters. If a {\name} node fails with its current
+view, it re-reads the most recent view and recursively retries. To make it
+faster, a view version id is also attached to each object's metadata.
+Since view change happens rarely, we keep history of all views.
+
+In spite of metadata, view change also requires data migration. A number
+of migration process are launched to move both the metadata and data to
+the new set of datacenters. This is similar to the failure recovery process,
+except that the migration process needs to update the view id in the
+metadata. In case of coding reconfiguration, i.e. the application changes
+the number of data fragments in encoding, the migration process also needs
+to compute all the parity fragments for the new view.
+
+
+
