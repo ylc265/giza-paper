@@ -1,0 +1,43 @@
+\section{Reconfiguration}
+This section discusses about relatively rare cases that happen in {\name}
+and how {\name} handle these cases. Because the main protocols are designed
+to guarantee safety with contention and any minority of failures, it is much
+easier to handle cases such as failure recovery, viewchange, migration etc.
+
+\subsection{Failure Recovery}
+
+Failures in {\name} are mainly in two catogeries: {\name} node failures and
+datacenter failures. If a {\name} node stops responding or is malfunctioning,
+we simply launch a new machine to took over its responsibility, and send a
+signal to shut it down. Note that the new node does not need to wait until
+the shutdown to finish. That said, both the new and previous nodes could be
+alive in the systems. This is okay because the {\name} protocols already
+guarantee safety in case of contention, thus no particular actions needed
+to force the end of life cycle of the malfunctioning node (which might not
+respond to any signals at all since it is malfunctioning).
+
+{\name} assumes the table service and blob storage service are reliable.
+Any errors related to these, e.g. unable to read or write, are considered
+as datacenter failures in {\name}. These failures can be caused by multiple
+reasons, such as a temporary network partition or a entire datacenter breakdown.
+In such cases {\name} can still make progress as long as there are enough
+datacenter left. It is worth noticing that the threshold could be different for
+metadata path and data path. For metadata, a majority of alive datacenters
+are required. For datapath, assume it writes to $N$ datacenters in total with
+$m$ data fragments. To tolerate $F$ datacenter failures, it needs to write
+to at least $F+m$ datacenters, which implies that $F<N-m$ (To tolerate $F$
+failures, you need to have at least $F$ parities).
+
+When a datacenter comes back online after crash, it needs to update the
+metadata rows in its table service and data fragments in the blob storage.
+A number of recovering clients are launched to scan through its objects.
+For each object, it issues a normal read request except that it does not
+pre-fetch the data. If the local version match the global version, nothing
+needs to be done; if the local version is behind, the recovering process
+then reads the latest data fragments, recaculate the fragment that belongs
+to the local datacenter and write it to the blob storage consistently with
+the metadata.
+
+\subsection{Viewchange}
+
+\subsection{Migration}
