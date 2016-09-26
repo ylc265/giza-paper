@@ -60,6 +60,7 @@ DC rebuild 						& 1x									& 2x & 3x & 4x & 5x 						& 3x & 4x
 \end{table*}
 
 \subsection{Alternative Approach}
+\label{sec:alternative}
 
 \ch{It feels better to move this subsection to a later section dedicated for discussion. We could mention Haibo's work there, or better in the related work section. If we do that, the tile of this section should probably be changed to ``costs and benefits''.}
 
@@ -69,10 +70,7 @@ This decision to treat data objects independently is a deliberate choice after c
 
 This approach avoids WAN traffic when serving data, as every data object is available in its entirety in one of the DCs. However, the challenge of this approach is to handle object deletion. Whenever a data object is deleted from $vol_A$ in data center A, it needs to be transmitted across WAN so as to be {\em canceled} from $vol_C$, which incurs WAN traffic upon deletion. In addition to the WAN traffic, deleting objects from the logical volumes would inevitably requires additional bookkeeping and garbage collection, which would result in greatly increased engineering complexity.
 
-Facebook F4 system adopts the above approach, but avoids the deletion challenge by never deleting data objects. In F4, every data object is encrypted with a unique key. Whenever a data object in a volume needs to be deleted, its unique key is destroyed while the encrypted data object remains in the volume. This simplification suits Facebook very well, because its deleted data only accounts for $6.8\%$ of total storage and Facebook could afford not to reclaim the storage space~\ref{bib:f4}. This, unfortunately, is not an option for Giza, as our workloads show much higher deletion rate. Not reclaiming the physical storage space from deleted data objects would result in significant waste and completely void the gain from cross-DC erasure coding. Furthermore, not physically deleting customer data objects - even if encrypted - wouldn't meet the compliance requirements for many of our customers.
 
-In comparison, Giza vastly simplifies the deletion problem by treating data objects independently. It deletes a data object by deleting all its data and parity fragments from individual DCs, which involves only tiny metadata traffic across WAN.
-Given the necessity and simplicity to implement deletion, Giza chooses to split individual data objects and incur WAN traffic and latency when serving data. Since the target workload for Giza is rather cold (very small numbers of reads over a large corpus of data), the amount of WAN traffic due to serving data turns out only a small fraction compared to storing data.
 
 %%% Local Variables:
 %%% mode: latex
