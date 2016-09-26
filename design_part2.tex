@@ -1,0 +1,114 @@
+\subsection{Joint optimization of Data and Meta-date Operations}
+
+The data path of \name is straighforward: the \name node encodes the data to $k$ original
+fragments and $m$ parity fragments. $k$ and $m$ are configurable. Then the node
+computes a content hash for each fragment, and use the hash value as key to
+write each fragment to a separate datacenter.  In the naive combination of data
+path and metadata path, the \name node serializes the two paths,
+resulting in at least two cross-DC roundtrips.  We design \name to reduce
+latency by running the data and metadata paths in parallel.  This is
+potentially problematic because either the data or metadata path could fail
+while the other one succeeds.  Below, we describe the end-to-end client
+operations and how they address this challenge.
+
+{\name} supports three operations: put, get and delete. All of them require a key as
+an argument to identify an object. put takes object content as an extra argument, get
+returns object content (null if non-exist) as result. A delete operation is processed
+as a special write, putting a tombstone in the object's metadata. The actual recycling
+of disk space happens at garbage collection, which will be described in ~\Cref{sec:xxxx}.
+
+{\bf The Put Operation:}
+After calculating the coded framents, the \name node launches both data and
+metapath paths in parallel.  To ensure that data is written durably in multiple
+DCs, the \name node waits for both the metadata and the data path to finish
+before returning to the client.  Furthermore, the \name node only starts 
+the Paxos commit phase after the data path completes. In other words, \name 
+ensures that {\tt known\_committed\_version} only refers to fragments
+that have been successfully written to their intended DCs.
+ 
+{\bf The Get Operation:}
+The naive way to perform Get is to first reads the latest metadata and then retrieves 
+the coded framents. 
+To cut down cross-DC latencies, {\name} chooses an optimistic approach to parallelize the metadata and data path.
+On a Get request, the {\name} node first reads from the corresponding metadata row from the table in the local DC
+to obtain the {\tt known\_committed\_version} and the corresponding coded 
+fragments location information. Then it immediately starts reading the data fragments from different
+datacenters.  Separately, the {\name} launches a regular metadata read to validate that the version it uses is actually
+the correct latest version. If the validation fails, i.e. the \name node
+has to redo its data path by fetching a different set of data fragments,
+resulting in wasted efforts in its previous data fetch.  Such potential waste
+only happens when there is concurrent read and write on the same object, which
+is rare in our workload.
+
+Because the data and metadata paths are performed in parallel during Puts,
+there is a rare case that the data fragments for the latest committed version
+have not been written to the blob storage at the time of read. This happens if 
+the metadata path in the corresponding Put finishes before the data path. In
+this case, the {\name} node in the get operation needs to fall back to read the
+previous version, up to the version specified in {\tt
+known\_committed\_version} $k$ as $k$ is only written when the corresponding
+data path has completed.
+
+\sm {
+  Hi Daniel, can you give me a few details about the hashing? e.g. hashing method,
+  hashing result size, collision rate, etc.)
+}
+
+\subsection{Garbage Collection}
+Because {\name} keeps writing new version metadata to table service and data fragments
+to blob storage service, it needs to garbage collect on outdated versions to recycle
+storage space. Moreover, the garbage collection also needs to free the space marked as
+tombstone by the delete operation.
+
+Recycling the old versions data includes deleting the data and parity fragments and
+truncating the columns for the old versions in the metadata row. Garbage collection
+for an object follows three steps: 1) read the metadata row and get the columns to
+delete based on the \texttt{hightest\_committed\_version}. 2) send delete requests to
+blob storage service to delete the data. 3) remove the columns for the old versions
+in the table service. The second step has to happen before the third in case that the
+garbage collection process is interrupted and the data fragments may become ``orphans''
+without proper metadata to point to them in the table service.
+
+After a delete operation, {\name} sees the row marked as tombstone by a special column.
+Now it needs to remove the entire row, which requires extra care. Otherwise if removed
+brutally, another put operation on the same key may bring the system into an abnormal
+state. The new put operation will start with the initial version again, which could
+violate some of the metadata (with a higher version before the deletion) if the removing is still in
+process. Therefore, {\name} chooses to use two-phase commit when to remove the metadata
+row. In the first phase, it marks the rows in all datacenters as ``prepared\_to\_delete''.
+After this any other get or put operations are temporarily disabled on this row. Then
+in the second phase, all the rows are actually removed from the table service. The
+disadvantage for this approach is that it requires all datacenters online. Any crashed
+datacenter or network partition may pause the process and makes the row unavailable
+(but can still continue or recovered after the failure is eliminated). 
+
+
+
+% \subsection{Giza Workflow}
+% Because of the high WAN RTT, Giza’s primary goal is to minimize the number of round trips in its put and get critical paths while maintaining strong consistency semantics. By approaching this problem with multiple iterations, we were able to reduce the original 3  WAN RTT to 1 WAN RTT in most cases, dramatically reducing the put and get latency.
+
+% \subsubsection{3 RTT Put and Get}
+% Figure 3 illustrates the workflow of a typical Put operation. When a client issues a Put command, Giza first queries its local metadata to identify a most likely latest version of the object. It then starts a paxos round for the version. A paxos round is broken down into two phases: the prepare phase and the accept phase. Giza runs the data path first, where the object is erasure encoded and the data fragments are sent to the corresponding data centers. (Here, we have to write this information down in case of giza node failure right). When the data path returns successfully, Giza proceeds to run the metadata phase which incurs two round trips.
+% \par 
+% During the Get path, Giza runs the metadata phase first to get the location of the data fragments. To ensure a consistent latest version of the data, Giza runs a paxos round for get on the object’s entry log. When this succeeds, Giza runs the datapath and receives enough data fragments to reconstruct the original data before returning to the client. Both the Put and Get incurs two rounds in the metadata path and 1 round in the data path.
+
+% \subsubsection{2 RTT Put and Get}
+% We quickly realized that the separation of metadata path and data path allows for some parallelism. In particular, during the Put path, Giza can run the prepare phase of the metadata path in parallel with the data path. When prepare phase and the data path succeed, Giza runs the second phase of the paxos round. Once this round completes, Giza can return acknowledgement to the client. This brings the round trips down to 2 round trips in the optimal case.
+% \par
+% Furthermore, during Get, Giza can run the additional paxos round for the get operation in parallel with the data path get. This can be done by first optimistically assuming that the current highest entry of the object in its local entry log is in fact the highest version. Once this information is obtained, Giza can then proceed to get the data fragments while simultaneously validating the consistency of the latest version on the metadata path. If the assumption is correct, the Get incurs 2 round trips.
+
+% \subsubsection{1 RTT Put and Get}
+% We used the classical Paxos protocol for achieving consistency on our metadata path. [Introduce Fast Paxos and why this works in this case, should do this after reading in depth about Fast Paxos]. This reduces Giza’s put path to 1 round trip.
+% \par
+% In the Get Path, we realized that we can forego running the paxos round in some scenarios by including a learning phase on the non-critical path of Put. After acknowledging to the client’s put request, the coordinator giza node will send the accepted version and the version number as a committed entry for the object to the other participating giza nodes. This entry is used to serve as the highest committed version and will only override existing entry if the version is higher. During a client’s Get request, Giza first obtains the object’s row entry from the majority of the participating giza nodes. If the latest entry in the paxos log are consistent or not higher than the highest committed entry, then Giza can safely return the results obtained from the data path. However, in the case where the latest entry in the paxos log is higher than the highest committed entry (This can happen if the giza nodes are simultaneously performing a paxos round for a newer version of the object or the learning phase has not reached the giza nodes), then Giza can still get the highest version but doing two things. First it can fallback to the previous approach of running a paxos round for the get operation. Alternatively, it can wait to obtain the object’s row from all the participating giza nodes (instead of the previous majority). In our scheme, we execute both options concurrently and return once the faster of the two approaches completes.
+
+% \subsection{Giza Recovery}
+% Describe the mechanism of recovery when a data path node fails but a metadata path node doesn’t (6-1 scheme still only utilizes 3 giza nodes for metadata).
+% \par
+% Describe the mechanism when a DC containing both data path and metadata path node fails (membership change).
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:
+
