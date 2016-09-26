@@ -1,15 +1,11 @@
 \section{Design Considerations}
 \label{sec:motivation}
 
-\comment{
-\subsection{Giza: Flexible Cross-DC erasure coding }
-
-Erasure coding across geo-graphically distributed data centers is a most effective approach to reduce storage cost while achieving the fault tolerance goal of being able to survive data center failure. As Facebook's F4 system~\ref{bib:F4} has demonstrated, replacing geo-replication with cross-DC erasure coding can effectively reduce storage overhead from 3.6x to 2.1x, achieving huge savings for Facebook's 65PB of warm storage. While a fixed 2 + 1 solution works very well for Facebook's special workload, the public cloud storage desires much more flexibility. Different customers have different desirable operating points in terms of cost, durability and latency trade-off and are willing to accept different pricing for individual needs. 
-
-Giza provide completes flexibility to the customers. When a storage account is created, the customers may specify how much fault tolerance is desired at the storage account level. In addition, the customers had additional flexibility to specify which data centers are involved, so that they could constraint all the data to be in the United States per data sovereignty requirement and regulation, or they could choose to disperse the erasure coded data across multiple continents, so that no single country could gain access to the complete data. 
-
-
-}
+%\subsection{Giza: Flexible Cross-DC erasure coding }
+%
+%Erasure coding across geo-graphically distributed data centers is a most effective approach to reduce storage cost while achieving the fault tolerance goal of being able to survive data center failure. As Facebook's F4 system~\ref{bib:F4} has demonstrated, replacing geo-replication with cross-DC erasure coding can effectively reduce storage overhead from 3.6x to 2.1x, achieving huge savings for Facebook's 65PB of warm storage. While a fixed 2 + 1 solution works very well for Facebook's special workload, the public cloud storage desires much more flexibility. Different customers have different desirable operating points in terms of cost, durability and latency trade-off and are willing to accept different pricing for individual needs. 
+%
+%Giza provide completes flexibility to the customers. When a storage account is created, the customers may specify how much fault tolerance is desired at the storage account level. In addition, the customers had additional flexibility to specify which data centers are involved, so that they could constraint all the data to be in the United States per data sovereignty requirement and regulation, or they could choose to disperse the erasure coded data across multiple continents, so that no single country could gain access to the complete data. 
 
 \subsection{Storage, Bandwidth and Durability}
 
@@ -62,7 +58,7 @@ DC rebuild 						& 1x									& 2x & 3x & 4x & 5x 						& 3x & 4x
 \subsection{Alternative Approach}
 \label{sec:alternative}
 
-\ch{It feels better to move this subsection to a later section dedicated for discussion. We could mention Haibo's work there, or better in the related work section. If we do that, the tile of this section should probably be changed to ``costs and benefits''.}
+%\ch{It feels better to move this subsection to a later section dedicated for discussion. We could mention Haibo's work there, or better in the related work section. If we do that, the tile of this section should probably be changed to ``costs and benefits''.}
 
 Giza treats data objects independently. To store one single data object, Giza splits the object into multiple data fragments and generates parity fragments. All the fragments are dispersed and stored in different data centers. To serve the data object, Giza reads enough data and parity fragments from the multiple data centers and reconstructs the data object. Hence, Giza always incurs WAN traffic when serving data.
 

@@ -2,22 +2,22 @@
 
 \subsection{Cross-DC Erasure Coding: Why Now?}
 
-As the entire IT industry is rapidly moving to the cloud, more and more data centers are being built all over the globe. The event that one of the data centers will fail catastrophically gradually becomes inevitable. In other words, this is no longer a matter of ``if'', but rather ''when''. {\em Designing for disasters}~\ref{bib:disasters} becomes essential and data stored in the cloud have to be protected against catastrophic failure.
+As the entire IT industry is rapidly moving to the cloud, more and more data centers are being built all over the globe. The event that one of the data centers will fail catastrophically gradually becomes inevitable. In other words, this is no longer a matter of ``if'', but rather ''when''. {\em Designing for disasters}~\cite{bib:disasters} becomes essential and data stored in the cloud have to be protected against catastrophic failure.
 
 There have been a long line of prior work~\ref{bib:BlahBlah} arguing for storing data objects in erasure coded form, as opposed to replication, across geo-graphically distributed data centers. Similar to geo-replication, cross-DC erasure coding can ensure durability even in the event of catastrophic data center failure. A main motivation for cross-DC erasure coding is to significantly reduce storage cost compared to geo-replication. The same economic force that has driven cloud providers to erasure code data within individual data centers naturally extends to the cross-DC scenario.
 
 Nevertheless, none of the cloud providers today offer options to erasure code customer data across data centers. This is largely due to the prohibitive cost of WAN bandwidth. The reduction in storage cost of cross-DC erasure coding comes at the additional cost of inflated WAN traffic, for both read/write during normal operation and access/rebuild in the event of data center failure, as illustrated in detail in section~\ref{sec:motivation}.
 Since the total cost of cloud storage includes both the storage cost in individual data centers and the WAN traffic cost across the data centers, cross-DC erasure coding has not become an economic solution yet.
 
-Fortunately, the technology advancement in wide area networking has progressed to a point where new innovations have greatly reduced WAN bandwidth cost. There are two key driving forces: 1) The erbium-doped fiber amplifiers~\ref{bib:mears:86} make it practical to amplify a huge spectrum of optical signal directly, without the need to first convert it to an electrical signal. 2) Dense Wave Division Multiplexing (DWDM) is therefore enabled by the fiber amplifiers and can send 10+ terabits per single fiber~\ref{bib:zhu:11}.
+Fortunately, the technology advancement in wide area networking has progressed to a point where new innovations have greatly reduced WAN bandwidth cost. There are two key driving forces: 1) The erbium-doped fiber amplifiers~\cite{mears1986low} make it practical to amplify a huge spectrum of optical signal directly, without the need to first convert it to an electrical signal. 2) Dense Wave Division Multiplexing (DWDM) is therefore enabled by the fiber amplifiers and can send 10+ terabits per single fiber~\cite{zhu2011112}.
 
-Most recently, Facebook and Microsoft have teamed up to build $MAREA$, a new fiber optic cable under the Atlantic Ocean that uses eight pairs of fiber optic strands and will come online in 2017 with 160 Tbps capacity~\ref{bib:MAREA1, bib:MAREA2}. Compared to MAREA, another transatlantic cable, FLAG Atlantic 1, had a mere capacity of 10 Gbps when coming online in 2001. The over 10,000x bandwidth increase in less than two decades is summarized in Table~\ref{tab:mears}. While the cost of MAREA remains undisclosed, it suffices to show that the cost of WAN bandwidth has reduced by several orders of magnitude. Indeed, the significant cost reduction in WAN bandwidth now makes cross-DC erasure coding economically attractive. And Project Giza addresses technical challenges so as to make such economical solution a reality.
+Most recently, Facebook and Microsoft have teamed up to build $MAREA$, a new fiber optic cable under the Atlantic Ocean that uses eight pairs of fiber optic strands and will come online in 2017 with 160 Tbps capacity~\cite{bib:MAREA1, bib:MAREA2}. Compared to MAREA, another transatlantic cable, FLAG Atlantic 1~\cite{bib:FA-1}, had a mere capacity of 10 Gbps when coming online in 2001. The over 10,000x bandwidth increase in less than two decades is summarized in Table~\ref{tab:mears}. While the cost of MAREA remains undisclosed, it suffices to show that the cost of WAN bandwidth has reduced by several orders of magnitude. Indeed, the significant cost reduction in WAN bandwidth now makes cross-DC erasure coding economically attractive. And Project Giza addresses technical challenges so as to make such economical solution a reality.
 
 \begin{table}[thp]
 \centering
 \begin{tabular}{|l|c|c|}
 \hline
-TransAtlantic Cable             & FLAG Atlantic 1~\ref{bib:FA-1}    & MAREA~\ref{bib:MAREA1, bib:MAREA2}
+TransAtlantic Cable             & FLAG Atlantic 1~\cite{bib:FA-1}   & MAREA~\cite{bib:MAREA1, bib:MAREA2}
 \\ \hline \hline
 Ready For Service               & 2001                              & 2017
 \\ \hline
@@ -36,7 +36,7 @@ Capacity                        & 10 Gbps                           & 160 Tbps
 
 \subsection{Giza Overview}
 
-Giza provides an externally consistent (linearizable~\ref{bib:linearizable}) versioned cloud storage service, which erasure codes data objects and stores them across globally distributed data centers.
+Giza provides an externally consistent (linearizable~\cite{herlihy1990linearizability}) versioned cloud storage service, which erasure codes data objects and stores them across globally distributed data centers.
 
 Customers access Giza service by creating Giza storage accounts. Per storage account, Giza allows the customers to specify the set of data centers where their data are striped across. In addition, the customers have the flexibility to choose erasure coding scheme. Giza employs classic $n = k + r$ Reed-Solomon coding, which generates $r$ parity fragments from $k$ data fragments. All $n$ fragments are stored in different data centers, where 1) failures of up to $r$ arbitrary data centers are tolerated; and 2) data can be reconstructed from any $k$ out of the $n$ data centers. By allowing the customers to specify the set of data centers and choose the erasure coding scheme, Giza gives the customers complete control of durability and storage overhead.
 
