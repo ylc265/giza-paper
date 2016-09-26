@@ -23,8 +23,8 @@
 
 \section{Design}
 
-This section will present the basic design of {\name}, including the overall architecture,
-the metadata schemes, and the protocols for supported operations in {\name}. 
+This section presents the design of {\name}, including the overall architecture,
+the data model, and the protocols for the {\em put}, {\em get} and {\em delete} operations.
 
 \subsection{Overview and challenges}
 
@@ -35,30 +35,35 @@ the metadata schemes, and the protocols for supported operations in {\name}.
 \end{figure}
 
 \paragraph{Architecture}
-{\name} is a global-scale cloud storage systems that span across many
-datacenters in the world.  \name stores mutable, versioned objects.
-~\Cref{fig:arch} shows the architecture of \name.  To support mutable coded
-objects, \name separates the data path from meta-data path.  On the data-path,
-object data is coded into several fragments, named by their content hashes, and
-stored in the different DCs.   On the meta-data path, \name stores the set of
-content hashes of coded fragments as the new version information for the object.
+{\name} is a global-scale cloud storage system 
+that spans across many data centers in the world.
+It stores mutable, versioned objects.
+Figure~\ref{fig:arch} shows the architecture of \name. 
+\name separates data path from meta-data path.
+On the data path, \name splits and encodes the object into data and parity fragments.
+Each fragment is uniquely named by it content hash
+and stored in a different DC.
+Updates to the object create new versions.
+The version numbers, together with the names and the locations of the coded fragments in each version,
+consist the meta-data of the object.
+On the meta-data path, \name replicates the meta-data across multiple DCs.
 
 We take the approach to layer \name on top of existing cloud storage infrastructure. This 
-provides two advantages.  First, doing so allows the rapid prototyping of \name by re-using 
+provides two advantages.  First, doing so allows the rapid development of \name by re-using 
 mature, deployed systems.  Second, it simplifies the failure recovery and 
-the deployment of \name, as \name servers are completely stateless and can be
-readily integrated with the rest of the stateless cloud storage frontend.
-Existing cloud storage systems have redundancy within a single data center, but
-are not geo-replicated.  Thus, \name must explicitly provide cross data center
-redundancy through coding and replication.  To write to an object, {\name}
-stores coded fragments in cloud blob stores in different data centers, such as
-Azure's blob store, or Amazon's S3.  Additionally, \name updates the object's
-meta-data information (e.g.  versions, names of coded fragments for the new
-content) in existing cloud tables and replicates them across several data
-centers.  The number of coded fragments, and thus the set of data centers
-storing object data, is configurable depending on the user desired tradeoff on
-durability vs. cost.  The number of data centers to replicate the meta-data is
-fixed at 3.
+the deployment of \name, as \name nodes are completely stateless and can be
+readily integrated with the rest of the stateless cloud storage front-ends.
+
+%Existing cloud storage systems have redundancy within a single data center, but are not geo-replicated.  Thus, \name must explicitly provide cross data center redundancy through coding and replication.
+To write the object,
+{\name} stores the coded fragments in different data centers in {\em cloud blob stores},
+such as Azure Blob, or AWS S3.
+Additionally, \name replicates the object's meta-data across multiple data centers 
+and stores the metadata in {\em cloud tables}, such as Azure Table, or AWS DynamoDB. 
+The number of the coded fragments, and thus the set of data centers
+storing the data object, is configurable depending on the user desired tradeoff on
+durability vs. cost.
+%The number of data centers to replicate the meta-data is fixed at 3.
 
 %blob service as building blocks, to store metadata and data respectively. This evolutional
 %design allows {\name} to minimize footprint of new code. In fact, {\name} merely needs to replace the previous front-end
@@ -76,29 +81,40 @@ fixed at 3.
 
 
 \paragraph{Technical challenges}
-In designing \name, we address three main technical challenges facing the basic approach.
+The data path of Giza is greatly simplified by naming the coded fragments by their content hashes.
+Now, the coded fragments become immutable, as updating the object would result in completely different fragments and hashes.
+Hence, storing immutable fragments in the cloud blob stores makes the data path straightforward.
+
+On the other hand, the metadata path of Giza is rather subtle.
+In designing \name, we address three main technical challenges involving the metadata path.
 \begin{enumerate}
 
 \item {\it Building a strongly consistent, geo-replicated meta-data storage out of existing 
-single-DC cloud tables.}  There are existing geo-replicated,
-strongly-consistently storage systems (Cassandra, CockcoarchDB) that have been
-built from the scratch.  However, we choose not to use them because we want to
-keep \name servers stateless and keep all data and meta-data in existing
-storage infrastructure that are operated by cloud providers. The common
-technique to ensure strong consistency is to implement the Paxos protocol.  How
-to implement Paxos using existing cloud storage APIs and achieve 
-good performance in the cross-DC setting?
+single-DC cloud tables.}
+There are existing solutions, such as Cassandra and CockcoarchDB,
+that offer strongly consistent, geo-replicated storage systems.
+Giza chooses not to adopt the existing solutions because
+1) it is desirable to make \name nodes stateless and keep all data and meta-data
+in existing cloud storage infrastructure;
+2) it is preferable to implement protocols best suited for our targeted workloads,
+so as to achieve optimal latency.
+Indeed, Giza ensures strong consistency by implementing the Paxos consensus protocol.
+But, how to implement Paxos using existing cloud storage APIs and achieve 
+optimal latency in the cross-DC setting?
 
 \item {\it Jointly optimizing the data and meta-data paths to achieve a single
-cross-DC roundtrip for read/write operations.}  Under the naive approach, the
-data and meta path are treated completely separately; a
-\name node completes the data path first before starting on the meta-data path.
-While doing so guarantees that data is durably written at multiple DCs before it becomes
-readable, each read/write operation takes at least two cross-DC. Can \name 
-combine data and metadata path operations to achieve a single cross-DC roundtrip?
+cross-DC round trip for read/write operations.}
+A naive approach would treat the data and metadata path sequentially:
+a \name node completes the data path first before starting on the meta-data path.
+While doing so guarantees that data is durably written at multiple DCs
+before it becomes externally visible, each write operation requires at least two cross-DC round trips.
+Similarly, a naive approach for read operation would take the first cross-DC round trip to retrieve the metadata
+and then the second round trip to retrieve the data.
+Can \name combine the data and metadata path operations to achieve a single cross-DC round trip for both read and write?
 
-\item {\it Performing garbage collection efficiently and promptly.}  When data is 
-over-written and deleted, \name must remove obsolete data and/or meta-data from
+\item {\it Performing garbage collection efficiently and promptly.} 
+\ch{Revisit this argument.}
+When data is over-written and deleted, \name must remove obsolete data and/or meta-data from
 the underlying cloud storage.  This is non-trivial because \name's garbage 
 collection mechanism must be able to handle DC failures while ensuring data 
 consistency and durability.
@@ -116,8 +132,8 @@ consistency and durability.
 
 \subsection{Implementing Paxos using Cloud Storage APIs}
 
-On the meta-data path, \name implements the Paxos protocol on top of existing cloud table storage, such 
-as Amazon DynamoDB or Azure Tables.
+On the meta-data path, \name implements the Paxos consensus protocol on top of existing cloud tables,
+such as Azure Table, or AWS DynamoDB.
 
 \begin{figure}[tp]
 \centering
@@ -126,7 +142,8 @@ as Amazon DynamoDB or Azure Tables.
 in a single row in the underlying cloud table.\label{fig:metadata}}
 \end{figure}
 
-{\bf Meta-data storage layout.}
+\subsubsection{Meta-data Storage Layout}
+
 \name uses the Paxos protocol to serialize the operation on each data object.  Thus, it 
 must keep Paxos protocol state together with the metadata for each object. Instead of storing the Paxos state elsewhere, {\name} makes the design
 choice to store the Paxos state together with the metadata itself,
@@ -149,9 +166,19 @@ version number known to have committed by Paxos.  This provides a hint on the la
 modification rather than a decisive answer, since there might be a higher
 \emph{ongoing} version that has just reached agreement.  
 
-{\bf Meta-data Write.}
+\subsubsection{Paxos vs. Fast Paxos}
+
+Giza implements two consensus algorithms: Paxos and Fast Paxos. In general, Paxos requires two {\em phases} to reach consensus. Since each phase takes one round trip, applying Paxos in Giza results in two cross-DC round trips for metadata writes~\footnote{Typical Paxos optimization elects a distinguished leader. The leader executes {\em phase} $1$ in advance and only takes one round trip in {\em phase} $2$ to reach consensus. This, however, requires relaying all updates through the leader. In the cross-DC scenario, for metadata writes originating in non-leader DCs, it takes one cross-DC round trip to relay the writes to the leader. Therefore, these metadata writes still take two cross-DC round trips.}.
+
+Fast Paxos, on the other hand, takes single round trip to reach consensus. It, however, requires a larger quorum than Paxos. Consider replicating the metadata across $3$ data centers, Paxos reaches consensus and completes the metadata replication when 2 out of the 3 data centers succeed. In comparison, Fast Paxos only reaches consensus and completes when all the 3 data centers succeed.
+
+The requirement of a larger quorum in Fast Paxos turns out not an issue for Giza. Giza requires at least 3 data centers to stripe the coded fragments (with 2 + 1 erasure coding). Hence, the data path won't succeed unless there are 3 data centers available, which naturally satisfy the quorum requirement in Fast Paxos.
+
+Hence, the most optimized metadata path in Giza implements Fast Paxos, as detailed next.
+
+\subsubsection{Meta-data Write - Common Case}
 The metadata path begins with
-choosing a proper version number to run the Fast-Paxos~\cite{fastpaxos} algorithm. The version number needs
+choosing a proper version number to run the Fast Paxos~\cite{fastpaxos} algorithm. The version number needs
 to be the next version to the most recently committed version.  While it is safe to use an outdated
 version (in which case the {\name} node will notice its mistake later and retry with a higher one),
 but it is unsafe to choose a higher one. {\name} node finds the proper version in an
@@ -174,6 +201,7 @@ commit is done in the background, so only the PreAccept is counted as part of
 the critical path) and is referred to as the fast path.  When there is no
 contention, the fast path always succeeds. 
 
+\subsubsection{Meta-data Write with Contention}
 In the case of contention, the fast-path may not succeed, i.e. the {\name} node
 cannot collect a fast quorum of successful PreAccept requests. The contention
 may come from concurrent updates to the same object, or a {\name} node trying
@@ -204,7 +232,8 @@ corresponding meta-data write as complete and may return to the client.
 Additionally, a commit phase similar to one described above is launched in
 background.
 
-{\bf Metadata Read.}
+\subsubsection{Metadata Read}
+
 To read the \emph{latest} metadata of an object, it is not sufficient that the \name node 
 only reads the corresponding metadata row from its local DC, since the local DC
 might not be part of the majority quarum that has accepted the latest value.
