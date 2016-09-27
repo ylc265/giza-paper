@@ -93,43 +93,6 @@ to the local datacenter and writes it to the blob storage consistently with
 the metadata.
 
 
-\section{Coping with DC Failure}
-
-\ch{The below is written before the latest section 4 update.}
-
-Giza is designed to cope with data center failures,
-which broadly include transient DC unavailability or permanent DC failure,
-as well as temporary or long-term outages of the blob and table storage service within individual DCs.
-
-\subsection{Transient DC Failure}
-
-We categorize the transient DC failure to include temporary outages of the blob
-and table storage service in a DC.  Giza copes with transient DC failure by
-design. 
-
-To tolerate single DC failure, each \name storage account is configured with
-one additional DC.  For example, With the $2 + 1$ erasure coding scheme, the
-corresponding storage account is configured with a set of 4 DCs.  On the data
-path, each object is encoded into 3 fragments and any 3 out of the 4 DCs can be
-chosen to store them.  On the metadata path, Paxos commits the metadata to any
-3 out of the 4 DCs. Note that both the fast and the slow quorum have the same
-size, that is equal to 3.
-
-When single DC becomes unavailable, or simply slow, {\em put} operation
-continues without much impact. It completes both the data and metadata paths by
-storing coded fragments and metadata in the rest 3 DCs. {\em Get} operation
-isn't affected much either. Given the hint from {\tt known committed versions},
-to confirm the latest version, the {\em get} operation typically only reads the
-metadata from one non-local DC, in addition to a local DC. Hence, the {\em get}
-operation completes both the data and the metadata paths by reaching from 2
-DCs.
-
-Similarly, with the $6 + 1$ erasure coding scheme, a corresponding storage
-account consists of 8 DCs. The data path is free to choose any 7 out of the 8
-DCs. Metadata is limited to a subset of 4 DCs specified for the storage
-account. Individual metadata paths are still free to choose any 3 out of the 4
-DCs.
-
 {\bf Permanent DC Failure}
 Data center may fail catastrophically. The blob and table storage service
 within the DC may also experience long-term outages. We categorize these all as
