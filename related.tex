@@ -46,5 +46,19 @@ It is common for a storage systems to separate data and metadata path, and desig
 Giza follows a similar design path, and store data in commodity cloud blob storage and metadata in commodity NoSQL table storage.
 
 {\bf Consistency in Global Storage:}
-Primary-backup, MDCC, Mencius, Spanner
+Megastore~\cite{megastore} and Spanner~\cite{Spanner} applies Multi-Paxos to 
+maintain strong consisteny in global databases. Both of them requires two roundtrips 
+for a slave site to commit. Mencius~\cite{Mencius} takes a round-robin approch for 
+proposers in different site, amortizing the commit latency. EPaxos~\cite{EPaxos} 
+uses fine-grained dependency tracking at acceptor-side to ensure low commit latency 
+for both non-contended and contended requests. In comparison to this series of work, 
+\name takes a refined approach based on FastPaxos~\cite{fastpaxos}, separating metadata 
+and data path before committing. This design choice allows \name to serve most requests 
+still in roundtrip while keeping servers stateless, using the limited ability of 
+table service. 
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:
 
