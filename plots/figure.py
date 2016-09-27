@@ -479,8 +479,32 @@ def giza_four(val, figname):
     plt.savefig(figname, bbox_inches="tight")
     if SHOW: plt.show()
 
+def giza_cock(val, figname):
+    fig, ax = plt.subplots(figsize=(8 * fig_scale, 5 * fig_scale))
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.xaxis.set_ticks_position('bottom')
+    ax.yaxis.set_ticks_position('left')
+
+#    if x_log_scale: ax.set_xscale('log')
+
+    ind = np.arange(len(four_names))
+    bar_val = [a[1] for a in val]
+    width = 0.5
+    lower_error = [a[1]-a[0] for a in val]
+    upper_error = [a[2]-a[1] for a in val]
+    ax.bar(ind, bar_val, width, color=colors[0], yerr=[lower_error, upper_error])
+    ax.set_xticks(ind + (width / 2))
+    ax.set_xticklabels(four_names)
+#    handles, labels = sort_legend(ax, val)
+#    plt.legend(handles, labels, ncol=1, loc="best")
+    plt.ylabel(STR_LATENCY_MS)
+#    plt.ylim(0,1.2)
+    #plt.xticks(np.arange(len(txt_sizes)), txt_sizes)
+    plt.savefig(figname, bbox_inches="tight")
+    if SHOW: plt.show()
 
 if __name__ == "__main__":
     giza_four(val=put_four, figname="giza_four_put.eps")
-    giza_four(val=put_four, figname="giza_four_get.eps")
+    giza_four(val=get_four, figname="giza_four_get.eps")
 
