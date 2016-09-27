@@ -22,8 +22,8 @@ On the data path, \name splits and encodes the object into data and parity fragm
 Each fragment is uniquely named by its content hash
 and stored in a different DC.
 Updates to the object create new versions.
-The version numbers, together with the names and the locations of the coded fragments in each version,
-consist the meta-data of the object.
+The version numbers, together with the hashes of the coded fragments in each version,
+consist of the meta-data of the object.
 On the meta-data path, \name replicates the meta-data across the data centers.
 
 We implement \name by layering on top of an existing cloud storage infrastructure. This 
@@ -59,9 +59,9 @@ durability vs. cost.
 
 
 \paragraph{Technical challenges}
-The data path of Giza is greatly simplified by naming the coded fragments by their content hashes.
-The coded fragments is immutable, as updating the object would result in completely different fragments and hashes.
-Hence, storing immutable fragments in the cloud blob stores makes the data path straightforward.
+Giza names each coded fragments by their content hashes.
+As a result, each coded fragments is immutable, as updating the object would result in completely different fragments and hashes.
+Hence, storing immutable fragments in the cloud blob stores makes the data path straightforward and greatly simplified. 
 
 On the other hand, the metadata path of Giza is subtle.
 In designing \name, we address three main technical challenges involving the metadata path.
@@ -82,8 +82,8 @@ optimal latency in the cross-DC setting.
 
 \item {\it Jointly optimizing the data and meta-data paths to achieve a single
 cross-DC round trip for read/write operations.}
-A naive approach would treat the data and metadata path sequentially:
-a \name node completes the data path first before starting on the meta-data path.
+A naive approach would execute the data and metadata path sequentially:
+a \name node completes the data path, write out the blob first before starting on the meta-data path.
 While doing so guarantees that data is durably written at multiple DCs
 before it becomes externally visible, each write operation requires at least two cross-DC round trips.
 Similarly, a naive approach for read operation would take the first cross-DC round trip to retrieve the metadata
@@ -112,21 +112,21 @@ consistency and durability.
 
 \subsection{Implementing Paxos using Cloud Storage APIs}
 
-On the meta-data path, \name leverages the Paxos consensus protocol to serialize the operations on each data object.
-It implements Paxos on top of existing cloud tables, such as Azure Table, or AWS DynamoDB.
+On the meta-data path, \name implements a Paxos consensus protocol to serialize the operations on each data object.
+More specifically, it implements Paxos on top of existing cloud tables, such as Azure Table, or AWS DynamoDB.
 
 \subsubsection{Paxos and Fast Paxos: A Brief Primer}
 
-The Paxos algorithm provides a mechanism to reach consensus among a set of {\em acceptors} and one or more {\em proposers}. Each proposer initiates a Paxos voting process by first picking a distinguished {\em ballot}. All ballots are unique and can be compared to each other. The proposer may send requests to the acceptors. Each acceptor decides whether to accept a request based on its own state. The proposer may also propose a value to the acceptors. The value is {\em committed} when it is accepted by a {\em quorum} of the acceptors. The acceptors update their states when a request or value is accepted.
+The Paxos algorithm provides a mechanism to reach consensus among a set of {\em acceptors} and one or more {\em proposers}. Each proposer initiates a Paxos voting process by first picking a distinguished {\em ballot}. All ballots are unique and can be compared to each other. The proposer send requests to the acceptors, and associate each request with a proposal value. Each acceptor decides whether to accept a request based on its own state. The proposal value is {\em committed} when it is accepted by a {\em quorum} of the acceptors. The acceptors update their states when a request or value is accepted.
 
-Applying Paxos in Giza, the Giza nodes now become the proposers. The acceptors in Paxos are typically active processors, which are capable of comparing the ballot of an incoming request with its own state and deciding whether to accept the request. In Giza, we implement the acceptors using the cloud table storage. Comparing the ballot and accepting the request is implemented via {\em atomic conditional update} to the table.
+In our implementation, each Giza node is a proposer. The acceptors in Paxos are typically active processors, which are capable of comparing the ballot of an incoming request with its own state and deciding whether to accept the request. In Giza, we implement the acceptors using the cloud table storage. Comparing the ballot and accepting the request is implemented via {\em atomic conditional update} to the table.
 
 Paxos takes two {\em phases} to reach consensus, where {\em phase} $1$ prepares a ballot and {\em phase} $2$ accepts a value. Since each phase takes one round trip, applying Paxos in Giza results in two cross-DC round trips for metadata writes~\footnote{Typical Paxos optimization elects a distinguished leader. The leader executes {\em phase} $1$ in advance and only takes one round trip in {\em phase} $2$ to reach consensus. This, however, requires relaying all updates through the leader. In the cross-DC scenario, it takes one cross-DC round trip to relay updates originating from non-leader DCs. Therefore, these updates still take two cross-DC round trips to commit.}.
 
-Fast Paxos is a faster version of Paxos. It employs two types of rounds: fast round and classic round. A fast round sends a PreAccept request and takes a single round trip to reach consensus. A classic round resembles the two phases in Paxos and takes two round trips.
+Fast Paxos is a version of Paxos designed to optimize the performance over cross-DC acceptors. It employs two types of rounds: fast round and classic round. A fast round sends a PreAccept request and takes a single round trip to reach consensus. A classic round resembles the two phases in Paxos and takes two round trips.
 The fast round in Fast Paxos demands a larger quorum than that in Paxos. Consider a case with $3$ acceptors. Paxos is able to reach consensus with 2 out of the 3 acceptors (quorum size of 2). In comparison, Fast Paxos only reaches consensus with all the 3 acceptors (quorum size of 3).
 
-In Giza, it turns out easy to satisfy the demand of a larger quorum in Fast Paxos. Giza requires at least 3 data centers to stripe the coded fragments (with $2 + 1$ erasure coding). Hence, the data path won't succeed unless there are at least 3 data centers available, which makes it easy to satisfy the larger quorum requirement.
+In Giza, the success of the data path requires multiple data centers to be online to make progress, it turns out easy to satisfy the demand of a larger quorum, and suites the implementation need in Fast Paxos. E.g., Giza requires at least 3 data centers to stripe the coded fragments (with $2 + 1$ erasure coding). Hence, the data path won't succeed unless there are at least 3 data centers available, which makes it easy to satisfy the larger quorum requirement.
 
 Giza implements both Paxos and Fast Paxos. In the below description, we focus on Fast Paxos and skip the details regarding Paxos.
 %Hence, the most optimized metadata path in Giza implements Fast Paxos, as detailed next.
@@ -147,7 +147,7 @@ To implement the Paxos consensus protocol,
 one table row per object, with a dynamic number of columns. The layout of each table row is
 shown in Figure~\ref{fig:metadata}.
 
-Each object has multiple versions.
+Each object may have multiple versions.
 The versions are represented by consecutive natural numbers, starting from $1$.
 A \name write operation leads to a new version of the object.
 For each version, Giza invokes a separate Paxos instance to ensure consistency
