@@ -1,25 +1,3 @@
-%% \section{Overview}
-
-%% [TODO put this to a separate file and come with a plan]
-
-%% [Shall we put the assumptions/setup here?]
-
-%% [Shall we put the interface here?]
-
-%% [Give a table, summarize the interface]
-
-%% % \subsection{Interface and Assumptions}
-%%                                 % Giza is an erasure coding scheme for key/value stores and provide two operations: Put(Key, Value) and Get(Key), where Key and Value are arbitrary strings. Get(Key) returns the value of the latest Put for that key. (Add assumptions here + what giza is good for: Giza provides fault tolerance for non byzantine failures in an asynchronous network)
-
-
-%% % operations  semantics
-%% % put         
-%% % get 
-%% % get_stale
-
-%% \subsection{State Machine Replication and Paxos}
-
-%% \subsection{Erasure coding}
 
 \section{Design}
 
@@ -41,14 +19,14 @@ It stores mutable, versioned objects.
 Figure~\ref{fig:arch} shows the architecture of \name. 
 \name separates data path from meta-data path.
 On the data path, \name splits and encodes the object into data and parity fragments.
-Each fragment is uniquely named by it content hash
+Each fragment is uniquely named by its content hash
 and stored in a different DC.
 Updates to the object create new versions.
 The version numbers, together with the names and the locations of the coded fragments in each version,
 consist the meta-data of the object.
-On the meta-data path, \name replicates the meta-data across multiple DCs.
+On the meta-data path, \name replicates the meta-data across the data centers.
 
-We take the approach to layer \name on top of existing cloud storage infrastructure. This 
+We implement \name by layering on top of an existing cloud storage infrastructure. This 
 provides two advantages.  First, doing so allows the rapid development of \name by re-using 
 mature, deployed systems.  Second, it simplifies the failure recovery and 
 the deployment of \name, as \name nodes are completely stateless and can be
@@ -61,7 +39,7 @@ such as Azure Blob, or AWS S3.
 Additionally, \name replicates the object's meta-data across multiple data centers 
 and stores the metadata in {\em cloud tables}, such as Azure Table, or AWS DynamoDB. 
 The number of the coded fragments, and thus the set of data centers
-storing the data object, is configurable depending on the user desired tradeoff on
+storing the data object, is configurable during the account setup depending on the user desired tradeoff on
 durability vs. cost.
 %The number of data centers to replicate the meta-data is fixed at 3.
 
@@ -82,10 +60,10 @@ durability vs. cost.
 
 \paragraph{Technical challenges}
 The data path of Giza is greatly simplified by naming the coded fragments by their content hashes.
-Now, the coded fragments become immutable, as updating the object would result in completely different fragments and hashes.
+The coded fragments is immutable, as updating the object would result in completely different fragments and hashes.
 Hence, storing immutable fragments in the cloud blob stores makes the data path straightforward.
 
-On the other hand, the metadata path of Giza is rather subtle.
+On the other hand, the metadata path of Giza is subtle.
 In designing \name, we address three main technical challenges involving the metadata path.
 \begin{enumerate}
 
@@ -99,8 +77,8 @@ in existing cloud storage infrastructure;
 2) it is preferable to implement protocols best suited for our targeted workloads,
 so as to achieve optimal latency.
 Indeed, Giza ensures strong consistency by implementing the Paxos consensus protocol.
-But, how to implement Paxos using existing cloud storage APIs and achieve 
-optimal latency in the cross-DC setting?
+The trick is to implement Paxos using existing cloud storage APIs and achieve 
+optimal latency in the cross-DC setting.
 
 \item {\it Jointly optimizing the data and meta-data paths to achieve a single
 cross-DC round trip for read/write operations.}
@@ -115,8 +93,10 @@ Can \name combine the data and metadata path operations to achieve a single cros
 \item {\it Performing garbage collection efficiently and promptly.} 
 \ch{Revisit later.}
 When data is over-written and deleted, \name must remove obsolete data and/or meta-data from
-the underlying cloud storage.  This is non-trivial because \name's garbage 
-collection mechanism must be able to handle DC failures while ensuring data 
+the underlying cloud storage. Also, when a data writes fail, \name may left partially written data, which need to be
+garbage collected.  
+This is non-trivial because \name's garbage 
+collection mechanism must be able to handle data center failures while ensuring data 
 consistency and durability.
 
 \end{enumerate}
