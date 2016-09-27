@@ -54,7 +54,7 @@ uses fine-grained dependency tracking at acceptor-side to ensure low commit late
 for both non-contended and contended requests. In comparison to this series of work, 
 \name takes a refined approach based on FastPaxos~\cite{fastpaxos}, separating metadata 
 and data path before committing. This design choice allows \name to serve most requests 
-still in roundtrip while keeping servers stateless, using the limited ability of 
+still in one roundtrip while keeping servers stateless, using the limited ability of 
 table service. 
 
 %%% Local Variables:

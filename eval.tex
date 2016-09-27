@@ -50,25 +50,55 @@ The 95th percentile latency result is shown in Figure 4. The four configurations
 
 }
 
-\subsection{Giza Latency}
+\subsection{Decomposing \name Latencies}
 
 In our workloads, the predominant object size is 4MB. Hence, we focus on the {\em put} and {\em get} latency of 4MB objects in the evaluation. For every data point reported in this section, we repeat the corresponding Giza operation 1000 times and then calculate the latency at desired percentile. The global Giza storage account with 4 DCs is used for this evaluation.
 
-\subsubsection{Optimizing Put Data Path}
+\subsubsection{Data Path Tunneling}
 
-add a bar plot comparing direct remote blob latency vs VM tunneling latency (use 50-percentile with error bars).
+\Cref{fig:eval_tunneling} shows the latency comparison between data path with tunneling and 
+directly accessing remote blob storage without tunneling. The median latency with tunneling 
+is xxx ms, vs xxx ms without tunneling. In addition, the latency with tunneling is much 
+more stable over time. Its (90\%, 10\%) latency is (xxx ms, xxx ms), while without tunneling 
+is (xxx ms, xxx ms). The variance without tunneling probably comes from the blob storage 
+has a huge public load and it varies over time. Although in practice \name without tunneling 
+should bring the same level of performance improvement, we chose tunneling for the rest of 
+the evaluation to have more analysis-friendly results.
 
-\subsubsection{Optimizing Put Metadata Path}
+\subsubsection{Metadata Path}
 
-add a bar plot comparing Paxos vs Fast Paxos
+To show the effects of our fast path design of metadata, we mesured the metadata path latency 
+for both fast path and slow path, as shown in~\Cref{fig:eval_fastpath}. As expected, the fast 
+path takes one network roundtrip plus the table read/write latency (with median at xxx ms); 
+the slow path takes two roundtrips, whose latency is about twice of fast path (with median at 
+xxx ms). This test concludes that the fast path optimization is critical to \name overall 
 
-\subsubsection{Giza Put Latency}
 
-add a bar plot comparing baseline (one WAN RTT + storage), sequential data + Paxos, parallel data + Paxos, optimized
+%\subsubsection{Giza Put Latency}
+\subsubsection{Giza Latency}
 
-\subsubsection{Giza Read Latency}
+\Cref{fig:eval_giza_put} shows the \name overall put latency for 4MB data. In comparison, 
+we tested two possible alternative designs: a sequential datapath with slow metadata 
+path (as normal Paxos); parallel datapath with slow metadata path. In addition, we also 
+included a one across datacenter RPC plus blob storage access test as baseline (it does 
+not gurantee any level of consistency).
 
-add a bar plot comparing baseline (one WAN RTT + storage), sequential data + Paxos, optimized
+The results show that \name's performance beats the other two alternatives and has closest
+latency to the baseline. The median latency of \name put is xxx ms, which is only xxx ms
+higher than the baseline. On the other hand, the serial version with only slow path takes 
+xxx ms, and the parallel version with slow path takes xxx ms.
+
+Similar to the put test, we did a \name get test, as shown in~\Cref{fig:eval_giza_get}. 
+\name also beats the other two alternatives, with a median latency xxx ms, higher than 
+the baseline by xxx ms. The gap between \name and baseline is higher because in the get 
+operation \name needs to do a local table retrieve first before starting the datapath. 
+
+%The results are expected. The \name put latency consists of a 
+%metadata put latency and datapath latency. 
+
+%\subsubsection{Giza Read Latency}
+
+
 
 \comment{
 
@@ -87,11 +117,20 @@ add a bar plot comparing baseline (one WAN RTT + storage), sequential data + Pax
 
 \subsection{Footprint Impact}
 
-Giza offers customers the flexibility to choose the set of data centers, as well as the erasure coding schemes. We evaluate 4 different Giza storage accounts, with the cross combination of $2+1$ vs $6+1$ erasure coding and all data centers in North America vs across 3 continents.
+\name offers customers the flexibility to choose the set of data centers, as well as the 
+erasure coding schemes. To show the performance of different configurations, we evaluate 
+4 different \name storage accounts, with the cross combination of $2+1$ vs $6+1$ erasure 
+coding and all data centers in North America vs across 3 continents.
 
-add a bar plot for put latency comparing the 4 configurations
+~\Cref{fig:eval_giza_put_four} shows the put latency for different configurations; 
+~\Cref{fig:eval_giza_get_four} shows the get latency. When the system is deployed within 
+North America, it has more stable latency results with both coding schemes. The $6+1$ coding
+is faster because it gives more parallelism for the data path. Because the data is fixed, 
+having more datacenters means smaller data fragments. The world-wide deploy shows much 
+more invariance in performance, which is expected because the system is facing the across-
+continent internet traffic. The $6+1$ performs better in this setup, in terms of the 
+both median latency and variance. 
 
-add a bar plot for get latency comparing the 4 configurations
 
 \subsection{Comparing Giza with CockroachDB}
 
@@ -122,22 +161,29 @@ Same for write
 
 [adding cpu results in a table]
 
-\subsection{Large object}
-256MB $\sim$ 1GB
+% \subsection{Large object}
+% 256MB $\sim$ 1GB
 
-X-axis: Value size
-Y-axis: Average Read latency
+% X-axis: Value size
+% Y-axis: Average Read latency
 
-X-axis: Value size
-Y-axis: Average Write latency
-
-
-\subsection{Contention}
-
-Fixed object size
-X-axis: zipf coefficient
-Y-axis: 50\%, 90\%, 99\% Read/Write Latency
+% X-axis: Value size
+% Y-axis: Average Write latency
 
 
-\subsection{Real workload}
-Table.
+% \subsection{Contention}
+
+% Fixed object size
+% X-axis: zipf coefficient
+% Y-axis: 50\%, 90\%, 99\% Read/Write Latency
+
+
+% \subsection{Real workload}
+% Table.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:
+
