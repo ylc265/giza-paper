@@ -5,6 +5,7 @@ how to configure which set of data centers to use for storing coded data
 fragments and replicating metadata, and how to handle failures.
 
 \subsection{Data center configuration}
+\label{subsec:config}
 
 \name supports a large number of paying customers, each of which is associated
 with his/her own storage account.  Each \name account is configured with a
@@ -14,10 +15,8 @@ coded data framents.  The number of DCs is determined by the coding rate. For ex
 Furthermore, 3 among the 7 DCs are designated as metadata DCs that replicate 
 metadata in addition to storing coded data.
 The choice of DCs is determined by user preferences.  For
-example, an OneDrive-like application may create a number of {\name} accounts,
-each of which stores data for users in a geographical region. The application
-could set up these accounts to choose a few DCs that are close to that
-region for better user experience.
+example, OneDrive could choose the DC where the user makes the most data access and 
+other closeby DCs for better peformance.
 
 The mapping from each \name account to its set of DCs is stored in a
 separate configuration service external to the \name system.  To service
@@ -29,22 +28,24 @@ threshold period of time.
 The set of DCs for an account may be changed, either due to changing user
 preferences or recovering from a failed DC.  Each new DC configuration for an
 account is associated with a monotonically increasing identifier, view-id.
-Since view change happens rarely, we keep history of all views.  The view-id is
+Since configuration changes infrequently, we keep the history of all DC configurations.  The view-id is
 attached to each version of the object metadata. To change to a new DC
-configuration for an account, {\name} goes into a grace period for the account.
-During this grace period, we attempt to invalidate the cached DC configuration
-information in all {\name} nodes and to replicate the metadata for all objects
-of an account to the new DCs. In the grace period, it is possible that
-different nodes hold different DC configurations for the same account. They may
-read or write different set of datacenters. If a {\name} node fails with its
-current view, it re-reads the most recent view and recursively retries. The
-grace period ends once the cached information in all {\name} nodes are
-invalidated and the metadata have been replicated to the new metadata DCs.
+configuration for an account, \name enters a grace period during which the
+cached DC configuration information in all {\name} nodes are invalidated.
+During the grace period, it is possible that some nodes use the old DC configuration
+while others use the new one. To ensure metadata consistency in this scenario,
+whenever \name writes a new version of the metadata whose previous version has
+the old DC configuration, its Paxos implementation obtains quorums in {\em
+both} the old and new configuration.  Therefore, DCs in the old and new
+configuration cannot concurrently agree on the same metadata version.
 
 The migration of coded data fragments from the old configuration of DCs to the
-new ones can happen outside of the grace period and in the background. Whenever 
-an object's fragments have been moved or re-generated in the new DCs, the migration worker 
-writes a new version of metadata for the object.
+new ones can happen outside of the grace period and in the background. Whenever
+an object's fragments have been moved or re-generated in the new DCs, the
+migration worker writes a new version of metadata for the object.
+Before the completion of data migration, it is possible that a {\em Get} operation 
+fails to obtain metadata or data in the new configuration.  In this situation, 
+{\name} retries the operation under the previous configuration.
 %similar to the failure recovery process, except that the migration process
 %needs to update the view id in the metadata. In case of coding reconfiguration,
 %i.e. the application changes the number of data fragments in encoding, the
@@ -54,14 +55,16 @@ writes a new version of metadata for the object.
 
 \subsection{Failure Handling}
 
-Failures in {\name} are mainly in two catogeries: {\name} node failures and
-datacenter failures. Since each \name node is stateless, 
-we can simply launch new machines to replace any failed ones.
-Note that the new node does not need to wait until
-failed ones to be shutdown.  Both the new and old nodes could be
-alive in the systems. This is okay because the {\name} protocols already
-guarantee safety in case of contention, thus no particular actions are needed
-to force the end of life cycle of node suspected of failure.
+There are two categories of failures: {\name} node failures and DC failures.
+Since each \name node is stateless, handing node failure is simple: we can
+simply launch new machines to replace any failed ones.  We focus on how \name
+handles DC failures.
+
+{\bf Transient DC failure.}
+We categorize the transient DC failure to include temporary outages of the blob
+and table storage service in a DC.  Giza copes with transient DC failure by
+design.
+
 
 The table service and blob storage service are reliable in the face of machine
 failures within a DC.  When an entire DC becomes unavailable, such as a
@@ -90,8 +93,6 @@ to the local datacenter and writes it to the blob storage consistently with
 the metadata.
 
 
-
-
 \section{Coping with DC Failure}
 
 \ch{The below is written before the latest section 4 update.}
@@ -102,41 +103,65 @@ as well as temporary or long-term outages of the blob and table storage service 
 
 \subsection{Transient DC Failure}
 
-We categorize the transient DC failure to include temporary outages of the blob and table storage service in a DC.
-Giza copes with transient DC failure by design.
+We categorize the transient DC failure to include temporary outages of the blob
+and table storage service in a DC.  Giza copes with transient DC failure by
+design. 
 
-To tolerate single DC failure, each Giza storage account is equipped with one additional DC.
-With the $2 + 1$ erasure coding scheme, a corresponding storage account is created with a set of 4 DCs.
-On the data path, each object is encoded into 3 coded fragments and any 3 out of the 4 DCs can be chosen to store the coded fragments.
-On the metadata path, Paxos commits the metadata to any 3 out of the 4 DCs. Note that both the fast and the slow quorum have the same size, that is equal to 3.
+To tolerate single DC failure, each \name storage account is configured with
+one additional DC.  For example, With the $2 + 1$ erasure coding scheme, the
+corresponding storage account is configured with a set of 4 DCs.  On the data
+path, each object is encoded into 3 fragments and any 3 out of the 4 DCs can be
+chosen to store them.  On the metadata path, Paxos commits the metadata to any
+3 out of the 4 DCs. Note that both the fast and the slow quorum have the same
+size, that is equal to 3.
 
-When single DC becomes unavailable, or simply slow, {\em put} operation continues without much impact. It completes both the data and metadata paths by storing coded fragments and metadata in the rest 3 DCs. {\em Get} operation isn't affected much either. Given the hint from {\tt known committed versions}, to confirm the latest version, the {\em get} operation typically only reads the metadata from one non-local DC, in addition to a local DC. Hence, the {\em get} operation completes both the data and the metadata paths by reaching from 2 DCs.
+When single DC becomes unavailable, or simply slow, {\em put} operation
+continues without much impact. It completes both the data and metadata paths by
+storing coded fragments and metadata in the rest 3 DCs. {\em Get} operation
+isn't affected much either. Given the hint from {\tt known committed versions},
+to confirm the latest version, the {\em get} operation typically only reads the
+metadata from one non-local DC, in addition to a local DC. Hence, the {\em get}
+operation completes both the data and the metadata paths by reaching from 2
+DCs.
 
-Similarly, with the $6 + 1$ erasure coding scheme, a corresponding storage account consists of 8 DCs. The data path is free to choose any 7 out of the 8 DCs. Metadata is limited to a subset of 4 DCs specified for the storage account. Individual metadata paths are still free to choose any 3 out of the 4 DCs.
+Similarly, with the $6 + 1$ erasure coding scheme, a corresponding storage
+account consists of 8 DCs. The data path is free to choose any 7 out of the 8
+DCs. Metadata is limited to a subset of 4 DCs specified for the storage
+account. Individual metadata paths are still free to choose any 3 out of the 4
+DCs.
 
-\subsection{Permanent DC Failure}
+{\bf Permanent DC Failure}
+Data center may fail catastrophically. The blob and table storage service
+within the DC may also experience long-term outages. We categorize these all as
+permanent DC failure.
 
-Data center may fail catastrophically. The blob and table storage service within the DC may also experience long-term outages. We categorize these all as permanent DC failure.
+\name handles permanent DC failure by triggering a DC configuration change 
+which replaces the failed DC with a new healthy one. This process is identical 
+to that required for the configuration change (Sec~\ref{subsec:config}) except
+\name also need to re-generate lost coded fragments instead of simply moving
+existing ones.  Furthermore, we prioritize work done to handle permanent DC
+failure over that for ordinary DC configuration change.
 
-Permanent DC failure typically triggers the migration of data and metadata from the failed DC to a new healthy one.
-This, however, can be a subtle process.
-Each storage account is configured with a set of DCs, which need to be updated to replace the failed DC with the new one.
-For each data object, its missing fragment originally stored in the failed DC needs to be reconstructed and stored in the new DC.
-Moreover, its metadata needs to be updated,
-not only to reflect the new fragment location, but also the change of the set of DCs for the Paxos algorithm.
-The latter is referred to as Paxos view change.
-It is very tricky to correctly implement the Paxos view change mechanism, in light of continuous {\em get} and {\em put} operations, while at the same time dealing with the permanent DC failure.
-
-Fortunately, permanent DC failure is an extremely rare event
-which allows Giza to resort to a much simplified approach.
-Upon permanent DC failure, a new storage account is created to replace the old storage account affected by the failed DC.
-The new storage account copies the set of DCs and replaces the failed DC with the new one.
-Giza then enumerates the old storage account and copies every object to the new storage account.
-The data path of copying an object to the new storage account is optimized to leave existing coded fragments unchanged, while only reconstruct and store missing fragments in the new DC.
-In other words, Giza avoids unnecessary writes to the blob storage whenever possible.
-To store metadata, the new storage account creates a new set of metadata tables.
-The metadata path of copying the object therefore involves committing new metadata in the corresponding rows in the new metadata tables. The object is deleted from the old storage account after being successfully copied to the new storage account.
-
+%Permanent DC failure typically triggers a DC configuration change 
+%to migrate data and metadata from the failed DC to a new healthy one.
+%This, however, can be a subtle process.
+%Each storage account is configured with a set of DCs, which need to be updated to replace the failed DC with the new one.
+%For each data object, its missing fragment originally stored in the failed DC needs to be reconstructed and stored in the new DC.
+%Moreover, its metadata needs to be updated,
+%not only to reflect the new fragment location, but also the change of the set of DCs for the Paxos algorithm.
+%The latter is referred to as Paxos view change.
+%It is very tricky to correctly implement the Paxos view change mechanism, in light of continuous {\em get} and {\em put} operations, while at the same time dealing with the permanent DC failure.
+%
+%Fortunately, permanent DC failure is an extremely rare event
+%which allows Giza to resort to a much simplified approach.
+%Upon permanent DC failure, a new storage account is created to replace the old storage account affected by the failed DC.
+%The new storage account copies the set of DCs and replaces the failed DC with the new one.
+%Giza then enumerates the old storage account and copies every object to the new storage account.
+%The data path of copying an object to the new storage account is optimized to leave existing coded fragments unchanged, while only reconstruct and store missing fragments in the new DC.
+%In other words, Giza avoids unnecessary writes to the blob storage whenever possible.
+%To store metadata, the new storage account creates a new set of metadata tables.
+%The metadata path of copying the object therefore involves committing new metadata in the corresponding rows in the new metadata tables. The object is deleted from the old storage account after being successfully copied to the new storage account.
+%
 
 %%% Local Variables:
 %%% mode: latex
