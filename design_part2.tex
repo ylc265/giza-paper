@@ -1,15 +1,17 @@
 \subsection{Joint optimization of Data and Meta-date Operations}
 
-The data path of \name is straighforward: the \name node encodes the data to $k$ original
-fragments and $m$ parity fragments. $k$ and $m$ are configurable. Then the node
-computes a content hash for each fragment, and use the hash value as key to
-write each fragment to a separate datacenter.  In the naive combination of data
-path and metadata path, the \name node serializes the two paths,
-resulting in at least two cross-DC roundtrips.  We design \name to reduce
-latency by running the data and metadata paths in parallel.  This is
-potentially problematic because either the data or metadata path could fail
-while the other one succeeds.  Below, we describe the end-to-end client
-operations and how they address this challenge.
+The data path of \name is straightforward: the \name node encodes the data to $k$ original
+fragments and $m$ parity fragments. $k$ and $m$ are configurable. Then the Giza node
+computes a content hash for each fragment, and uses the hash value as the key to
+write each fragment to a separate data center.
+When naively combining the data path with the earlier metadata path,
+the \name node serializes the two paths, resulting in two or more cross-DC round trips.
+To reduce latency, we optimize \name to run the data and metadata paths in parallel.
+This is potentially problematic because either the data or metadata path could fail
+while the other one succeeds.
+Below, we describe how {\em put} and {\em get} cope with this challenge and ensure end-to-end correctness.
+
+\comment{
 
 {\name} supports three operations: put, get and delete. All of them require a key as
 an argument to identify an object. put takes object content as an extra argument, get
@@ -17,70 +19,105 @@ returns object content (null if non-exist) as result. A delete operation is proc
 as a special write, putting a tombstone in the object's metadata. The actual recycling
 of disk space happens at garbage collection, which will be described in ~\Cref{sec:xxxx}.
 
-{\bf The Put Operation:}
-After calculating the coded framents, the \name node launches both data and
-metapath paths in parallel.  To ensure that data is written durably in multiple
-DCs, the \name node waits for both the metadata and the data path to finish
-before returning to the client.  Furthermore, the \name node only starts 
-the Paxos commit phase after the data path completes. In other words, \name 
-ensures that {\tt known\_committed\_version} only refers to fragments
-that have been successfully written to their intended DCs.
- 
-{\bf The Get Operation:}
-The naive way to perform Get is to first reads the latest metadata and then retrieves 
-the coded framents. 
-To cut down cross-DC latencies, {\name} chooses an optimistic approach to parallelize the metadata and data path.
-On a Get request, the {\name} node first reads from the corresponding metadata row from the table in the local DC
-to obtain the {\tt known\_committed\_version} and the corresponding coded 
-fragments location information. Then it immediately starts reading the data fragments from different
-datacenters.  Separately, the {\name} launches a regular metadata read to validate that the version it uses is actually
-the correct latest version. If the validation fails, i.e. the \name node
-has to redo its data path by fetching a different set of data fragments,
-resulting in wasted efforts in its previous data fetch.  Such potential waste
-only happens when there is concurrent read and write on the same object, which
-is rare in our workload.
+}
 
-Because the data and metadata paths are performed in parallel during Puts,
-there is a rare case that the data fragments for the latest committed version
-have not been written to the blob storage at the time of read. This happens if 
-the metadata path in the corresponding Put finishes before the data path. In
-this case, the {\name} node in the get operation needs to fall back to read the
-previous version, up to the version specified in {\tt
-known\_committed\_version} $k$ as $k$ is only written when the corresponding
-data path has completed.
+{\bf The Put Operation:}
+After generating the coded fragments and calculating their content hashes,
+the \name node launches both the data and metadata paths in parallel.
+In the common case,
+the \name node waits for both the data and the metadata paths to finish before acknowledging clients.
+Furthermore, it replicates the Commit confirmation only after both the data and the metadata paths complete. 
+In other words, \name ensures that {\tt known committed version} only include those versions
+whose data and metadata have both been successfully committed.
+
+In one uncommon case, the data path succeeds, while the metadata path fails.
+Now, the fragments stored in the cloud blobs become useless.
+Giza deletes these fragments and reclaims storage through a cleaning process,
+which first executes Paxos to update the current version to {\em no-op}
+and then removes the fragments from the corresponding blob stores in all the DCs.
+
+In another uncommon case, the data path fails, but the metadata path succeeds.
+This is rather subtle, as it creates a challenging for the {\em get} operation,
+as addressed next.
+
+{\bf The Get Operation:}
+A naive way to perform {\em get} is to first read the latest metadata and then retrieve the coded fragments.
+To reduce latency, {\name} chooses an optimistic approach and parallelizes the metadata and the data paths.
+
+For a {\em get} request, the {\name} node first reads from the local DC the corresponding metadata table row.
+It obtains {\tt known committed version}, as well as the names and locations of the coded fragments of the latest version.
+The \name node immediately starts reading the coded fragments from the different data centers.
+Separately, it launches a regular metadata read to validate that the version is indeed the latest.
+If the validation fails, the \name node realizes there is a newer version.
+It in turn has to redo the data path by fetching a different set of coded fragments.
+This results in wasted efforts in its previous data fetch.
+Such potential waste, however, only happens when there is concurrent writes on the same object,
+which is rare in our workload.
+
+Because the data and metadata paths are performed in parallel during {\em put},
+there is a rare case that the coded fragments for the latest committed version
+have not been written to the blob storage at the time of read.
+This happens if the metadata path in the {\em put} finishes before the data path,
+or the metadata path succeeds while the data path fails.
+In such case, the {\name} node needs to fall back to read the previous version,
+as specified in {\tt known committed version}.
+
+\comment{
 
 \sm {
   Hi Daniel, can you give me a few details about the hashing? e.g. hashing method,
   hashing result size, collision rate, etc.)
 }
 
-\subsection{Garbage Collection}
+}
+
+\subsection{Deletion and Garbage Collection}
+
+Giza supports two types of deletion operation: trimming earlier versions and deleting entire data object.
+To control the size of the metadata table rows, Giza limits the number of versions for each object.
+Once the limit is reached, writing a new version automatically trims the earliest version.
+
+Deleting a specific version is processed as a special update of the object's metadata.
+It again executes the Paxos algorithm and creates a new version to record a deletion record for the deleted version.
+Once the deletion record is successfully committed,
+Giza garbage collects and reclaims the storage spaced occupied by the coded fragments of the deleted version.
+
+\comment{
 Because {\name} keeps writing new version metadata to table service and data fragments
 to blob storage service, it needs to garbage collect on outdated versions to recycle
 storage space. Moreover, the garbage collection also needs to free the space marked as
 tombstone by the delete operation.
+}
 
-Recycling the old versions data includes deleting the data and parity fragments and
-truncating the columns for the old versions in the metadata row. Garbage collection
-for an object follows three steps: 1) read the metadata row and get the columns to
-delete based on the \texttt{hightest\_committed\_version}. 2) send delete requests to
-blob storage service to delete the data. 3) remove the columns for the old versions
-in the table service. The second step has to happen before the third in case that the
-garbage collection process is interrupted and the data fragments may become ``orphans''
-without proper metadata to point to them in the table service.
+The garbage collection process includes deleting the coded fragments and
+truncating the column for the deleted version in the metadata table row.
+It follows three steps:
+1) read the metadata row and identify the column corresponding to the deleted version;
+2) send deletion requests to blob storage to delete the coded fragments;
+3) remove the column for the deleted version from the table storage.
+The second step has to occur before the third one in case that
+the garbage collection process is interrupted and the coded fragments may become ``orphans''
+without proper metadata pointing to them in the table storage.
 
-After a delete operation, {\name} sees the row marked as tombstone by a special column.
-Now it needs to remove the entire row, which requires extra care. Otherwise if removed
-brutally, another put operation on the same key may bring the system into an abnormal
-state. The new put operation will start with the initial version again, which could
-violate some of the metadata (with a higher version before the deletion) if the removing is still in
-process. Therefore, {\name} chooses to use two-phase commit when to remove the metadata
-row. In the first phase, it marks the rows in all datacenters as ``prepared\_to\_delete''.
-After this any other get or put operations are temporarily disabled on this row. Then
-in the second phase, all the rows are actually removed from the table service. The
-disadvantage for this approach is that it requires all datacenters online. Any crashed
-datacenter or network partition may pause the process and makes the row unavailable
-(but can still continue or recovered after the failure is eliminated). 
+To delete the entire object, 
+{\name} first executes Paxos to commit a tombstone as the highest version.
+Then, it deletes the coded fragments corresponding to all the versions of the object.
+Finally, it starts to delete the entire table row from the tables across all the DCs.
+This requires extra care. Otherwise if removed brutally, 
+a new {\em put} operation of the same object may lead the system into an abnormal state.
+The {\em put} operation could start at a data center where the table row is already deleted.
+The {\em put} operation would therefore assume the object never existed and choose the smallest version number.
+Committing this version number could be dangerous before the metadata table row is deleted from all the DCs,
+as this could result in conflict and ambiguity during future failure recovery.
+
+% start with an initial version, which could violate some of the metadata (with a higher version before the deletion) if the removing is still in process.
+Therefore, {\name} resorts to two-phase commit to delete the metadata table row.
+In the first phase, it marks the rows in all the data centers as ``prepared\_to\_delete''.
+After this any other {\em get} or {\em put} operations are temporarily disabled on this object.
+Then in the second phase, all the rows are actually removed from the table storage.
+The disadvantage of this approach is that it requires all the data centers online.
+Data center failure or network partition may pause the process and make the row unavailable
+(but can still continue after data center recovers or network partition heals). 
 
 
 
