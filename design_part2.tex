@@ -52,10 +52,10 @@ If the validation fails, the \name node realizes there is a newer version.
 It in turn has to redo the data path by fetching a different set of coded fragments.
 This results in wasted efforts in its previous data fetch.
 Such potential waste, however, only happens when there is concurrent writes on the same object,
-which is rare in our workload.
+which is rare.
 
 Because the data and metadata paths are performed in parallel during {\em put},
-there is a rare case that the coded fragments for the latest committed version
+it is possible (though rare) that the coded fragments for the latest committed version
 have not been written to the blob storage at the time of read.
 This happens if the metadata path in the {\em put} finishes before the data path,
 or the metadata path succeeds while the data path fails.
