@@ -89,6 +89,55 @@ then reads the latest data fragments, re-calcuates the fragment that belongs
 to the local datacenter and writes it to the blob storage consistently with
 the metadata.
 
+
+
+
+\section{Coping with DC Failure}
+
+\ch{The below is written before the latest section 4 update.}
+
+Giza is designed to cope with data center failures,
+which broadly include transient DC unavailability or permanent DC failure,
+as well as temporary or long-term outages of the blob and table storage service within individual DCs.
+
+\subsection{Transient DC Failure}
+
+We categorize the transient DC failure to include temporary outages of the blob and table storage service in a DC.
+Giza copes with transient DC failure by design.
+
+To tolerate single DC failure, each Giza storage account is equipped with one additional DC.
+With the $2 + 1$ erasure coding scheme, a corresponding storage account is created with a set of 4 DCs.
+On the data path, each object is encoded into 3 coded fragments and any 3 out of the 4 DCs can be chosen to store the coded fragments.
+On the metadata path, Paxos commits the metadata to any 3 out of the 4 DCs. Note that both the fast and the slow quorum have the same size, that is equal to 3.
+
+When single DC becomes unavailable, or simply slow, {\em put} operation continues without much impact. It completes both the data and metadata paths by storing coded fragments and metadata in the rest 3 DCs. {\em Get} operation isn't affected much either. Given the hint from {\tt known committed versions}, to confirm the latest version, the {\em get} operation typically only reads the metadata from one non-local DC, in addition to a local DC. Hence, the {\em get} operation completes both the data and the metadata paths by reaching from 2 DCs.
+
+Similarly, with the $6 + 1$ erasure coding scheme, a corresponding storage account consists of 8 DCs. The data path is free to choose any 7 out of the 8 DCs. Metadata is limited to a subset of 4 DCs specified for the storage account. Individual metadata paths are still free to choose any 3 out of the 4 DCs.
+
+\subsection{Permanent DC Failure}
+
+Data center may fail catastrophically. The blob and table storage service within the DC may also experience long-term outages. We categorize these all as permanent DC failure.
+
+Permanent DC failure typically triggers the migration of data and metadata from the failed DC to a new healthy one.
+This, however, can be a subtle process.
+Each storage account is configured with a set of DCs, which need to be updated to replace the failed DC with the new one.
+For each data object, its missing fragment originally stored in the failed DC needs to be reconstructed and stored in the new DC.
+Moreover, its metadata needs to be updated,
+not only to reflect the new fragment location, but also the change of the set of DCs for the Paxos algorithm.
+The latter is referred to as Paxos view change.
+It is very tricky to correctly implement the Paxos view change mechanism, in light of continuous {\em get} and {\em put} operations, while at the same time dealing with the permanent DC failure.
+
+Fortunately, permanent DC failure is an extremely rare event
+which allows Giza to resort to a much simplified approach.
+Upon permanent DC failure, a new storage account is created to replace the old storage account affected by the failed DC.
+The new storage account copies the set of DCs and replaces the failed DC with the new one.
+Giza then enumerates the old storage account and copies every object to the new storage account.
+The data path of copying an object to the new storage account is optimized to leave existing coded fragments unchanged, while only reconstruct and store missing fragments in the new DC.
+In other words, Giza avoids unnecessary writes to the blob storage whenever possible.
+To store metadata, the new storage account creates a new set of metadata tables.
+The metadata path of copying the object therefore involves committing new metadata in the corresponding rows in the new metadata tables. The object is deleted from the old storage account after being successfully copied to the new storage account.
+
+
 %%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "main"
