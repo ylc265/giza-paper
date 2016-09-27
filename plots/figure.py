@@ -21,17 +21,17 @@ STR_LATENCY_MS_IN_LOG_SCALE = "Latency(ms) in log scale"
 STR_COMMIT_RATE = "commit rate"
 
 
-mpl.rcParams['font.sans-serif'] = ['SimHei']
-STR_CONCURRENT_REQS_PER_SERVER = u"并发请求数/服务器"
-STR_THROUGHPUT = u"吞吐量"
-STR_NUMBER_OF_SERVERS = u"服务器数量"
-STR_THROUGHPUT_NEW_ORDER = u"吞吐量（New-order/s）"
-STR_CPU_UTILIZATION = u"CPU使用率"
-STR_LATENCY_MS = u"延迟（ms）"
-STR_ATTEMPT_NEW_ORDER = u"尝试次数（New-order/s）"
-STR_NUMBER_OF_TRIES_PER_COMMIT = u"每次成功提交需要尝试次数"
-STR_LATENCY_MS_IN_LOG_SCALE = u"延迟（ms）"
-STR_COMMIT_RATE = u"提交成功率"
+#mpl.rcParams['font.sans-serif'] = ['SimHei']
+#STR_CONCURRENT_REQS_PER_SERVER = u"并发请求数/服务器"
+#STR_THROUGHPUT = u"吞吐量"
+#STR_NUMBER_OF_SERVERS = u"服务器数量"
+#STR_THROUGHPUT_NEW_ORDER = u"吞吐量（New-order/s）"
+#STR_CPU_UTILIZATION = u"CPU使用率"
+#STR_LATENCY_MS = u"延迟（ms）"
+#STR_ATTEMPT_NEW_ORDER = u"尝试次数（New-order/s）"
+#STR_NUMBER_OF_TRIES_PER_COMMIT = u"每次成功提交需要尝试次数"
+#STR_LATENCY_MS_IN_LOG_SCALE = u"延迟（ms）"
+#STR_COMMIT_RATE = u"提交成功率"
 
 
 ROCOCO = "Rococo"
@@ -472,8 +472,7 @@ def giza_four(val, figname):
     ax.set_xticklabels(four_names)
 #    handles, labels = sort_legend(ax, val)
 #    plt.legend(handles, labels, ncol=1, loc="best")
-#    plt.xlabel(str_concurrent_reqs_per_server)
-#    plt.ylabel(str_commit_rate)
+    plt.ylabel(STR_LATENCY_MS)
 #    plt.ylim(0,1.2)
     #plt.xticks(np.arange(len(txt_sizes)), txt_sizes)
     plt.savefig(figname, bbox_inches="tight")
