@@ -93,8 +93,10 @@ Can \name combine the data and metadata path operations to achieve a single cros
 \item {\it Performing garbage collection efficiently and promptly.} 
 \ch{Revisit later.}
 When data is over-written and deleted, \name must remove obsolete data and/or meta-data from
-the underlying cloud storage.  This is non-trivial because \name's garbage 
-collection mechanism must be able to handle DC failures while ensuring data 
+the underlying cloud storage. Also, when a data writes fail, \name may left partially written data, which need to be
+garbage collected.  
+This is non-trivial because \name's garbage 
+collection mechanism must be able to handle data center failures while ensuring data 
 consistency and durability.
 
 \end{enumerate}
