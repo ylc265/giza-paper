@@ -1,15 +1,19 @@
 \section{Implementation}
-We implement Giza in C++ as a frontend on top of Microsoft Azure. We chose Azure because currently it provides the largest number of data centers across different geographical regions. This allows for experimenting with a wider range of coding schemes. However, Giza is designed to be invariant to the underlying cloud services and can be deployed by simply creating new interfaces to the specific table and blob storage. We implemented the Azure storage and table interface using the official Azure Storage Client Library for C++ (2.4.0). We use the Jerasure and GF-Complete erasure code libraries for coding the data using Reed-Solomon coding. However, Giza allows the flexibility for using different coding schemes as well.
+We implement Giza in C++ as a frontend on top of Microsoft Azure. We use Azure mainly 
+due to our production needs. In addition, Azure currently provides the largest number 
+of data centers across different geographical regions. This allows for experimenting 
+with a wider range of coding schemes. However, Giza is designed to be invariant to the 
+underlying cloud services and can be deployed by simply creating new interfaces to the 
+specific table and blob storage. 
+%We implemented the Azure storage and table interface using the official Azure Storage Client Library for C++ (2.4.0). 
+We use the Jerasure and GF-Complete~\cite{Jerasure} as our erasure code libraries.
+%However, Giza allows the flexibility for using different coding schemes as well.
 
-Giza also serves as a frontend for other Giza nodes during table and blob storage accesses. When a Giza in a data center makes a request to the table and blob storage in another data center, it does by making an rpc call to the Giza node in the targeted data center. Hence, a Giza node does not directly interact with the table and blob storage in data centers located in other geographical regions. We made this implementation decision for two reasons. First, in ordere to implement the paxos logic using the underlying table interface, multiple requests might be necessary. This would incur unnecessary cross WAN round trips. In our case with Azure table, we implement the atomic updates to the paxos acceptors by using the provided Etags. When updating an acceptor entry, Giza first reads the entry and its associated etag. It then decides whether entry's value can be updated. If this is the case, Giza makes a replace entity request that only succeeds if the entry's etag value is still the same. During concurrent requests, this process can repeat multiple times. Second, we make the assumption that all network traffics are routed over the public internet. While this doesn't have to be the case since some cloud providers do offer dedicated private connection (e.g Azure Express Route), setting up private connections across wide area network may be too costly to be an option. As such, cross regional vm to storage latency performance can be significantly degraded during peak hours. We observed that latency can be reduced by first sending metadata and data to the vm of the targeted data center and then having the vm send data to its local blob and table storage. 
-
-{XXX: Daniel, I moved the following from design section to the implementation section}
-
-{\bf Implementing conditional Write.}
-The \name design depends on the conditional write feature provided by the
-underlying table service. Some cloud providers support this feature, such as Amazon DynamoDB.
+%{\bf Implementing conditional write.}
+The \name design depends on the conditional write feature provided by the underlying 
+table service. Some cloud providers support this feature, such as Amazon DynamoDB.
 Others only provide simpler versions of conditional writes. For example, as used in our
-experiments, Windows Azasure provides a function called ETag. An ETag works similar to
+experiments, Windows Azure provides a function called ETag. An ETag works similar to
 a lease. It is generated at the table service side and returned to a table service client
 on a read request. The client could give the tag as an argument in later write operations,
 and the writes will only succeed if the row was not accessed by another client.
@@ -23,3 +27,19 @@ a proxy to finish the operation and returns the result. This optimization will l
 reduce the latency result. Because all the requests can be safely abandoned and retried,
 the {\name} nodes are still stateless with delegation.
 
+In our implementation, \name nodes in one datacenter also serve as proxies for other 
+nodes in other datacenters during blob storage accesses. 
+%When a \name node makes a 
+%request to the table and blob storage in another data center, it does by making an rpc call to the Giza node in the targeted data center. 
+Hence, a \name node does not directly interact with either the table or blob storage 
+in datacenters located in other geographical regions. The proxy-style for blob storage 
+is due to our observation that the across datacenter VM-to-VM latency is much less variant 
+over time than the across datacenter VM-to-storage latency. We chose this proxy-style 
+to better study and analyze the performance of \name.
+
+%We made this implementation decision for two reasons. First, in ordere to implement the paxos logic using the underlying table interface, multiple requests might be necessary. This would incur unnecessary cross WAN round trips. In our case with Azure table, we implement the atomic updates to the paxos acceptors by using the provided Etags. When updating an acceptor entry, Giza first reads the entry and its associated etag. It then decides whether entry's value can be updated. If this is the case, Giza makes a replace entity request that only succeeds if the entry's etag value is still the same. During concurrent requests, this process can repeat multiple times. Second, we make the assumption that all network traffics are routed over the public internet. While this doesn't have to be the case since some cloud providers do offer dedicated private connection (e.g Azure Express Route), setting up private connections across wide area network may be too costly to be an option. As such, cross regional vm to storage latency performance can be significantly degraded during peak hours. We observed that latency can be reduced by first sending metadata and data to the vm of the targeted data center and then having the vm send data to its local blob and table storage. 
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:
