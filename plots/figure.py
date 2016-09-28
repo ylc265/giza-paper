@@ -541,8 +541,8 @@ lat_get = [
     [175.61789999999999, 201.88, 315.41109999999998]
 ]
 
-lat_put_names = ["Serial", "Parallel", "Giza", "Baseline"]
-lat_get_names = ["Serial", "Giza", "Baseline"]
+lat_put_names = ["Serial", "Parallel", "Giza", "Giza-data-only"]
+lat_get_names = ["Serial", "Giza", "Giza-data-only"]
 def giza_lat(val, names, figname):
     fig, ax = plt.subplots(figsize=(8 * fig_scale, 5 * fig_scale))
     ax.spines['right'].set_visible(False)
@@ -570,9 +570,9 @@ def giza_lat(val, names, figname):
     pass
 
 if __name__ == "__main__":
-#    giza_lat(lat_put, lat_put_names, figname="giza_lat_put.eps")
-#    giza_lat(lat_get, lat_get_names, figname="giza_lat_get.eps")
+    giza_lat(lat_put, lat_put_names, figname="giza_lat_put.eps")
+    giza_lat(lat_get, lat_get_names, figname="giza_lat_get.eps")
 #    giza_four(val=put_four, figname="giza_four_put.eps")
 #    giza_four(val=get_four, figname="giza_four_get.eps")
-    giza_cock(cock_val, "giza_cock_put.eps")
+#    giza_cock(cock_val, "giza_cock_put.eps")
 
