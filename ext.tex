@@ -10,11 +10,13 @@ fragments and replicating metadata, and how to handle failures.
 \name supports a large number of paying customers, each of which is associated
 with his/her own storage account.  Each \name account is configured with a
 collection of three or more DCs that replicate the metadata and/or store the
-coded data framents.  The number of DCs is determined by the coding rate. For example, if a 
-6+1 erasure code is to be used, there should be 7 DCs in the configuration.  
+coded data framents.  The customer specifies a desired fault tolerance goal, and an acceptable cost
+of storing the data. The configuration determines the number of DCs that the customer's data will be stored, which in turn determines coding rate. For example, if the customer wishes to protect against
+one data center failure and is willing to pay $17\%$ extra for the protection,
+a 6+1 erasure code is to be used, and there should be 7 DCs in the configuration.  
 Furthermore, 3 among the 7 DCs are designated as metadata DCs that replicate 
 metadata in addition to storing coded data.
-The choice of DCs is determined by user preferences.  For
+The choice of DCs is determined by user preferences. For
 example, OneDrive could choose the DC where the user makes the most data access and 
 other closeby DCs for better peformance.
 
@@ -37,7 +39,7 @@ while others use the new one. To ensure metadata consistency in this scenario,
 whenever \name writes a new version of the metadata whose previous version has
 the old DC configuration, its Paxos implementation obtains quorums in {\em
 both} the old and new configuration.  Therefore, DCs in the old and new
-configuration cannot concurrently agree on the same metadata version.
+configuration must concurrently agree on the same metadata version.
 
 The migration of coded data fragments from the old configuration of DCs to the
 new ones can happen outside of the grace period and in the background. Whenever
@@ -56,7 +58,7 @@ fails to obtain metadata or data in the new configuration.  In this situation,
 \subsection{Failure Handling}
 
 There are two categories of failures: {\name} node failures and DC failures.
-Since each \name node is stateless, handing node failure is simple: we can
+Since each \name node is stateless, handling node failure is simple: we can
 simply launch new machines to replace any failed ones.  We focus on how \name
 handles DC failures.
 
