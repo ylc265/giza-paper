@@ -1,10 +1,23 @@
+\begin{figure*}
+\begin{tabular}{c|c|c|c|c|c}
+& coding rate & \# of DCs & DC location & Latency to Majority & Max Latency\\
+\hline
+US-2-1 & 2+1 & 4 & west, south central, & ?? ms& ?? ms\\
+US-6-1 & 6+1 & 8 & &?? ms&?? ms\\
+world-2-1 & 2+1 & 4 & &?? ms &?? ms\\
+world-6-1 & 6+1 & 8 & &?? ms &?? ms\\
+\end{tabular}
+\caption{The DC configurations and inter-DC latencies in various experiments~\label{fig:dcconfig}} 
+\end{figure*}
+
 \subsection{Setup}
-Our experiments involve a varying number of DCs. In each DC, we deploy a single
-Azure virtual machine (16 cores, 56 GB of RAM, and gigabit ethernet) and create
-a storage account for accessing Azure blob and table storage. Both the blob and
-table storage are configured with the ``locally redundant'' replication level.
-Each \name node accesses the local DC's cloud storage and also proxies the
-storage requests from \name nodes in other DCs.  
+Our experiments involve a varying number of DCs in different configurations. In
+each DC, we deploy a single Azure virtual machine (16 cores, 56 GB of RAM, and
+gigabit ethernet) and create a storage account for accessing Azure blob and
+table storage. Both the blob and table storage are configured with the
+``locally redundant'' replication level.  Each \name node accesses the local
+DC's cloud storage and also proxies the storage requests from \name nodes in
+other DCs.  
 
 For CockroachDB experiments, we run a CockroachDB cluster spanning across
 multiple DCs.  We use the same set of Azure virtual machines and run a single
@@ -15,3 +28,12 @@ we run NTP to synchronize the clocks of different CockroachDB nodes.
 We generate experimental workloads using the YCSB benchmark. In the generated
 workload, the probability of accessing a given key follows a Zipf distribution.
 We experiment with different object sizes ranging from 128KB to 4MB. 
+
+We experiment with four diffferent DC configurations, as shown in
+Figure~\ref{fig:dcconfig}.  These configurations correspond to different coding
+rates and different choices of DCs, either within US-only or spread across the
+world. The wide-area latency across different DCs plays an important role in 
+the performance of \name.  Figure~\ref{fig:dcconfig} reports the majority
+latency (measured as the latency required to get a response from a majority
+quorum of DCs) and the maximum latency between DCs.
+
