@@ -38,7 +38,7 @@ ROCOCO = "Rococo"
 ROCOCO = "DepTran"
 
 SHOW = True
-SHOW = False
+#SHOW = False
 X_LOG_SCALE = False
 
 
@@ -446,7 +446,6 @@ def tpcc_ct_cr(val, figname):
     if SHOW: plt.show()
 
 
-names = ["Baseline", "Serial", "Parallel", "Giza"]
 put_four = [[176.93020000000001, 211.0975, 298.58264999999994],
 			 [361.11500000000001, 374.44900000000001, 429.95800000000003],
 			 [178.762, 198.81049999999999, 314.59929999999997],
@@ -479,7 +478,47 @@ def giza_four(val, figname):
     plt.savefig(figname, bbox_inches="tight")
     if SHOW: plt.show()
 
+size_names = ["256KB", "512KB", "1MB", "2MB", "4MB"]
+size_names = ["256KB", "1MB", "4MB"]
+cock_legends = ["CockroachDB", "Giza"]
+
 def giza_cock(val, figname):
+    fig, ax = plt.subplots(figsize=(8 * fig_scale, 5 * fig_scale))
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.xaxis.set_ticks_position('bottom')
+    ax.yaxis.set_ticks_position('left')
+
+#    if x_log_scale: ax.set_xscale('log')
+    ind = np.arange(len(size_names))
+    #bar_val = [a[1] for a in val]
+    bar_val_1 = np.arange(len(size_names)) * 3
+    bar_val_2 = np.arange(len(size_names)) * 6 + 1
+    width = 0.3
+    #lower_error = [a[1]-a[0] for a in val]
+    #upper_error = [a[2]-a[1] for a in val]
+    lower_error = np.arange(len(size_names)) * 0.1
+    upper_error = np.arange(len(size_names)) * 0.1
+    ax.bar(ind, bar_val_1, width, color=colors[0], yerr=[lower_error, upper_error])
+    ax.bar(ind+width, bar_val_2, width, color=colors[2], yerr=[lower_error, upper_error])
+    ax.set_xticks(ind + (width))
+    ax.set_xticklabels(size_names)
+#    handles, labels = sort_legend(ax, val)
+#    plt.legend(handles, labels, ncol=1, loc="best")
+    plt.ylabel(STR_LATENCY_MS)
+#    plt.ylim(0,1.2)
+    #plt.xticks(np.arange(len(txt_sizes)), txt_sizes)
+    plt.savefig(figname, bbox_inches="tight")
+    if SHOW: plt.show()
+
+lat_put = [
+    [912.5421, 933.58000000000004, 1056.3134999999997],
+    [456.10500000000002, 466.84500000000003, 526.20000000000005],
+    [361.11500000000001, 374.44900000000001, 429.95800000000003],
+    [328.637, 341.648, 374.9367]
+]
+lat_names = ["Serial", "Parallel", "Giza", "Baseline"]
+def giza_lat(val, figname):
     fig, ax = plt.subplots(figsize=(8 * fig_scale, 5 * fig_scale))
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -495,7 +534,7 @@ def giza_cock(val, figname):
     upper_error = [a[2]-a[1] for a in val]
     ax.bar(ind, bar_val, width, color=colors[0], yerr=[lower_error, upper_error])
     ax.set_xticks(ind + (width / 2))
-    ax.set_xticklabels(four_names)
+    ax.set_xticklabels(lat_names)
 #    handles, labels = sort_legend(ax, val)
 #    plt.legend(handles, labels, ncol=1, loc="best")
     plt.ylabel(STR_LATENCY_MS)
@@ -503,8 +542,11 @@ def giza_cock(val, figname):
     #plt.xticks(np.arange(len(txt_sizes)), txt_sizes)
     plt.savefig(figname, bbox_inches="tight")
     if SHOW: plt.show()
+    pass
 
 if __name__ == "__main__":
-    giza_four(val=put_four, figname="giza_four_put.eps")
-    giza_four(val=get_four, figname="giza_four_get.eps")
+    giza_lat(lat_put, figname="giza_lat_put.eps")
+#    giza_four(val=put_four, figname="giza_four_put.eps")
+#    giza_four(val=get_four, figname="giza_four_get.eps")
+#    giza_cock(np.arange(len(size_names))*3, "giza_cock_put.eps")
 
