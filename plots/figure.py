@@ -511,16 +511,16 @@ def giza_cock(val, figname):
     width = 0.3
     lower_error = [a[1]-a[0] for a in val[0]]
     upper_error = [a[2]-a[1] for a in val[0]]
-    ax.bar(ind, bar_val_1, width, color=colors[0], yerr=[lower_error, upper_error])
+    ax.bar(ind, bar_val_1, width, color=colors[0], yerr=[lower_error, upper_error], label="CockroachDB")
 #    ax.bar(ind+width, bar_val_2, width, color=colors[2], yerr=[lower_error, upper_error], error_kw=dict(ecolor='red', lw=20, capsize=5, capthick=2))
     lower_error = [a[1]-a[0] for a in val[1]]
     upper_error = [a[2]-a[1] for a in val[1]]
-    ax.bar(ind+width, bar_val_2, width, color=colors[2], yerr=[lower_error, upper_error], error_kw=dict(ecolor='red'))
+    ax.bar(ind+width, bar_val_2, width, color=colors[2], yerr=[lower_error, upper_error], error_kw=dict(ecolor='red'), label="Giza")
     ax.set_xticks(ind + (width))
     ax.set_xticklabels(size_names)
     ax.set_yscale('log')
 #    handles, labels = sort_legend(ax, val)
-#    plt.legend(handles, labels, ncol=1, loc="best")
+    plt.legend(ncol=1, loc="best")
     plt.ylabel(STR_LATENCY_MS_IN_LOG_SCALE)
     plt.xlabel(STR_OBJECT_SIZE)
 #    plt.ylim(0,1.2)
@@ -570,9 +570,9 @@ def giza_lat(val, names, figname):
     pass
 
 if __name__ == "__main__":
-    giza_lat(lat_put, lat_put_names, figname="giza_lat_put.eps")
-    giza_lat(lat_get, lat_get_names, figname="giza_lat_get.eps")
+#    giza_lat(lat_put, lat_put_names, figname="giza_lat_put.eps")
+#    giza_lat(lat_get, lat_get_names, figname="giza_lat_get.eps")
 #    giza_four(val=put_four, figname="giza_four_put.eps")
 #    giza_four(val=get_four, figname="giza_four_get.eps")
-#    giza_cock(cock_val, "giza_cock_put.eps")
+    giza_cock(cock_val, "giza_cock_put.eps")
 
