@@ -28,7 +28,7 @@ resides in the same DC as the underlying table $T$.
 
 In our implementation, \name nodes in one datacenter also serve as proxies for
 other nodes in other datacenters during blob storage accesses.  Proxying for
-blob storage is due to our observation that the across datacenter VM-to-VM
+blob storage is due to our observation that the cross datacenter VM-to-VM
 latency is much less variant over time than the cross-DC VM-to-storage latency.
 We chose this proxy-style to better study and analyze the performance of \name.
 
