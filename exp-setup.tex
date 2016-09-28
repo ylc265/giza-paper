@@ -1,0 +1,17 @@
+\subsection{Setup}
+Our experiments involve a varying number of DCs. In each DC, we deploy a single
+Azure virtual machine (16 cores, 56 GB of RAM, and gigabit ethernet) and create
+a storage account for accessing Azure blob and table storage. Both the blob and
+table storage are configured with the ``locally redundant'' replication level.
+Each \name node accesses the local DC's cloud storage and also proxies the
+storage requests from \name nodes in other DCs.  
+
+For CockroachDB experiments, we run a CockroachDB cluster spanning across
+multiple DCs.  We use the same set of Azure virtual machines and run a single
+CockroachDB node per DC. Our configuration of CockroachDB follows the
+recommended production settings by the developers of CockroachDB. For example,
+we run NTP to synchronize the clocks of different CockroachDB nodes. 
+
+We generate experimental workloads using the YCSB benchmark. In the generated
+workload, the probability of accessing a given key follows a Zipf distribution.
+We experiment with different object sizes ranging from 128KB to 4MB. 
