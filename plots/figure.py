@@ -19,6 +19,7 @@ STR_ATTEMPT_NEW_ORDER = "Attempts(new-order/s)"
 STR_NUMBER_OF_TRIES_PER_COMMIT = "Number of tries per commit"
 STR_LATENCY_MS_IN_LOG_SCALE = "Latency(ms) in log scale"
 STR_COMMIT_RATE = "commit rate"
+STR_OBJECT_SIZE = "Object size"
 
 
 #mpl.rcParams['font.sans-serif'] = ['SimHei']
@@ -482,6 +483,19 @@ size_names = ["256KB", "512KB", "1MB", "2MB", "4MB"]
 size_names = ["256KB", "1MB", "4MB"]
 cock_legends = ["CockroachDB", "Giza"]
 
+cock_val = [
+  [
+    [136.99851036070001, 139.66643810299999, 333.52502584439941],
+    [449.3335008624, 481.97555541999998, 2349.6226906814991],
+    [1718.84202957, 2514.52994347, 20395.678997000003],
+  ],
+  [
+    [115.23310000000001, 127.794, 218.90309999999999],
+    [117.36040000000001, 130.90700000000001, 217.65365],
+    [176.93020000000001, 211.0975, 298.58264999999994]
+  ]
+]
+
 def giza_cock(val, figname):
     fig, ax = plt.subplots(figsize=(8 * fig_scale, 5 * fig_scale))
     ax.spines['right'].set_visible(False)
@@ -492,20 +506,23 @@ def giza_cock(val, figname):
 #    if x_log_scale: ax.set_xscale('log')
     ind = np.arange(len(size_names))
     #bar_val = [a[1] for a in val]
-    bar_val_1 = np.arange(len(size_names)) * 3
-    bar_val_2 = np.arange(len(size_names)) * 6 + 1
+    bar_val_1 = [a[1] for a in val[0]]
+    bar_val_2 = [a[1] for a in val[1]]
     width = 0.3
-    #lower_error = [a[1]-a[0] for a in val]
-    #upper_error = [a[2]-a[1] for a in val]
-    lower_error = np.arange(len(size_names)) * 0.1
-    upper_error = np.arange(len(size_names)) * 0.1
+    lower_error = [a[1]-a[0] for a in val[0]]
+    upper_error = [a[2]-a[1] for a in val[0]]
     ax.bar(ind, bar_val_1, width, color=colors[0], yerr=[lower_error, upper_error])
-    ax.bar(ind+width, bar_val_2, width, color=colors[2], yerr=[lower_error, upper_error])
+#    ax.bar(ind+width, bar_val_2, width, color=colors[2], yerr=[lower_error, upper_error], error_kw=dict(ecolor='red', lw=20, capsize=5, capthick=2))
+    lower_error = [a[1]-a[0] for a in val[1]]
+    upper_error = [a[2]-a[1] for a in val[1]]
+    ax.bar(ind+width, bar_val_2, width, color=colors[2], yerr=[lower_error, upper_error], error_kw=dict(ecolor='red'))
     ax.set_xticks(ind + (width))
     ax.set_xticklabels(size_names)
+    ax.set_yscale('log')
 #    handles, labels = sort_legend(ax, val)
 #    plt.legend(handles, labels, ncol=1, loc="best")
-    plt.ylabel(STR_LATENCY_MS)
+    plt.ylabel(STR_LATENCY_MS_IN_LOG_SCALE)
+    plt.xlabel(STR_OBJECT_SIZE)
 #    plt.ylim(0,1.2)
     #plt.xticks(np.arange(len(txt_sizes)), txt_sizes)
     plt.savefig(figname, bbox_inches="tight")
@@ -554,8 +571,8 @@ def giza_lat(val, names, figname):
 
 if __name__ == "__main__":
 #    giza_lat(lat_put, lat_put_names, figname="giza_lat_put.eps")
-    giza_lat(lat_get, lat_get_names, figname="giza_lat_get.eps")
+#    giza_lat(lat_get, lat_get_names, figname="giza_lat_get.eps")
 #    giza_four(val=put_four, figname="giza_four_put.eps")
 #    giza_four(val=get_four, figname="giza_four_get.eps")
-#    giza_cock(np.arange(len(size_names))*3, "giza_cock_put.eps")
+    giza_cock(cock_val, "giza_cock_put.eps")
 
