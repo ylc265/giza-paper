@@ -26,7 +26,7 @@ As described in section~\ref{sec:design}, all the Giza nodes are stateless. Upon
 We measure Giza's latency performance by running 1000 write and read operations with a single threaded Giza node.We vary the object size (1mb and 4mb) and compared different configurations. 
 The 95th percentile latency result is shown in Figure 4. The four configurations we chose are 3 data centers in the US (2-1 erasure coding scheme), 3 data centers across the world, 7 data centers in the US (6-1 erasure coding scheme), and 7 data centers across the world. Both the configuration (i.e distance between data centers) and the size of the object impact latency peformance. Larger objects incur higher latency in both the vm to vm transfer and the local blob storage access. This can explain the similar put latency results between the 3 US data center configuration and the 7 US data center configuration. Even though in the 3 US data center configuration, the distance between the data centers are much shorter (Iowa, Illinois, and West Central), each data fragment is 2MB. We can see in Table 3 that this increases the latency performance for the data path. In the 7 US data center configuration, each data fragment is just 700 KB, which reduces latency even when the data centers are further away. 
 
-}
+
 
 \subsection{Decomposing \name Latencies}
 
