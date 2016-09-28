@@ -517,8 +517,16 @@ lat_put = [
     [361.11500000000001, 374.44900000000001, 429.95800000000003],
     [328.637, 341.648, 374.9367]
 ]
-lat_names = ["Serial", "Parallel", "Giza", "Baseline"]
-def giza_lat(val, figname):
+
+lat_get = [
+    [290.10199999999998, 319.67899999999997, 472.39299999999997],
+    [194.14130000000003, 223.62700000000001, 348.34109999999993],
+    [175.61789999999999, 201.88, 315.41109999999998]
+]
+
+lat_put_names = ["Serial", "Parallel", "Giza", "Baseline"]
+lat_get_names = ["Serial", "Giza", "Baseline"]
+def giza_lat(val, names, figname):
     fig, ax = plt.subplots(figsize=(8 * fig_scale, 5 * fig_scale))
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -527,14 +535,14 @@ def giza_lat(val, figname):
 
 #    if x_log_scale: ax.set_xscale('log')
 
-    ind = np.arange(len(four_names))
+    ind = np.arange(len(names))
     bar_val = [a[1] for a in val]
     width = 0.5
     lower_error = [a[1]-a[0] for a in val]
     upper_error = [a[2]-a[1] for a in val]
     ax.bar(ind, bar_val, width, color=colors[0], yerr=[lower_error, upper_error])
     ax.set_xticks(ind + (width / 2))
-    ax.set_xticklabels(lat_names)
+    ax.set_xticklabels(names)
 #    handles, labels = sort_legend(ax, val)
 #    plt.legend(handles, labels, ncol=1, loc="best")
     plt.ylabel(STR_LATENCY_MS)
@@ -545,7 +553,8 @@ def giza_lat(val, figname):
     pass
 
 if __name__ == "__main__":
-    giza_lat(lat_put, figname="giza_lat_put.eps")
+#    giza_lat(lat_put, lat_put_names, figname="giza_lat_put.eps")
+    giza_lat(lat_get, lat_get_names, figname="giza_lat_get.eps")
 #    giza_four(val=put_four, figname="giza_four_put.eps")
 #    giza_four(val=get_four, figname="giza_four_get.eps")
 #    giza_cock(np.arange(len(size_names))*3, "giza_cock_put.eps")

@@ -52,10 +52,11 @@ the slow path takes two roundtrips, whose latency is about twice of fast path (w
 xxx ms). This test concludes that the fast path optimization is critical to \name overall 
 
 
-%\subsubsection{Giza Put Latency}
-\subsubsection{Giza Latency}
+\subsubsection{Giza Put Latency}
+%\subsubsection{Giza Latency}
+\input{fig_lat}
 
-\Cref{fig:eval_giza_put} shows the \name overall put latency for 4MB data. In comparison, 
+Figure~\ref{fig:eval_giza_put} shows the \name overall put latency for 4MB data. In comparison, 
 we tested two possible alternative designs: a sequential datapath with slow metadata 
 path (as normal Paxos); parallel datapath with slow metadata path. In addition, we also 
 included a one across datacenter RPC plus blob storage access test as baseline (it does 
@@ -66,15 +67,15 @@ latency to the baseline. The median latency of \name put is xxx ms, which is onl
 higher than the baseline. On the other hand, the serial version with only slow path takes 
 xxx ms, and the parallel version with slow path takes xxx ms.
 
-Similar to the put test, we did a \name get test, as shown in~\Cref{fig:eval_giza_get}. 
+\subsubsection{Giza Get Latency}
+
+Similar to the put test, we did a \name get test, as shown in Figure~\ref{fig:eval_giza_get}. 
 \name also beats the other two alternatives, with a median latency xxx ms, higher than 
 the baseline by xxx ms. The gap between \name and baseline is higher because in the get 
 operation \name needs to do a local table retrieve first before starting the datapath. 
 
 %The results are expected. The \name put latency consists of a 
 %metadata put latency and datapath latency. 
-
-%\subsubsection{Giza Read Latency}
 
 
 
@@ -102,8 +103,8 @@ erasure coding schemes. To show the performance of different configurations, we 
 4 different \name storage accounts, with the cross combination of $2+1$ vs $6+1$ erasure 
 coding and all data centers in North America vs across 3 continents.
 
-~\Cref{fig:eval_giza_put_four} shows the put latency for different configurations; 
-~\Cref{fig:eval_giza_get_four} shows the get latency. When the system is deployed within 
+Figure~\ref{fig:eval_giza_put_four} shows the put latency for different configurations; 
+Figure~\ref{fig:eval_giza_get_four} shows the get latency. When the system is deployed within 
 North America, it has more stable latency results with both coding schemes. The $6+1$ coding
 is faster because it gives more parallelism for the data path. Because the data is fixed, 
 having more datacenters means smaller data fragments. The world-wide deploy shows much 
