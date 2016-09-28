@@ -1,8 +1,13 @@
 \begin{abstract}
 
-Competition and scale are the two main forces driving cloud storage providers to apply erasure coding for better durability and lower cost. Today, all the major cloud storage providers encode customer data within individual data centers. The same economics forces are now pushing cross-DC erasure coding as the new forefront. We argue that the right time has finally arrived.
+%Competition and scale are the two main forces driving cloud storage providers to apply erasure coding for better durability and lower cost. Today, all the major cloud storage providers encode customer data within individual data centers. The same economics forces are now pushing cross-DC erasure coding as the new forefront. We argue that the right time has finally arrived.
 
-This paper presents the design, implementation and evaluation of Giza - a strongly consistent, versioned object store that encodes objects across global data centers. Giza builds on top of existing cloud storage systems. It leverages cloud blob storage to store data and cloud table storage to store metadata. This architecture choice of Giza leads to stateless Giza servers, which facilitates development, deployment, operation and scale-out. Giza implements the Paxos consensus algorithms to achieve strong consistency. We address unique challenges implementing Paxos using restricted cloud storage APIs. We also exploit the cloud storage APIs as to as heavily optimize both data and metadata storage. As a result, Giza is fast in normal operation for our target workloads. At the same, Giza is guaranteed correct when failures or anomalies do arise.
+All major cloud storage providers have been driven by competition and scale to erasure code customer data within individual data centers. Now, the same economics force is pushing cross-DC erasure coding as the new forefront. The right time has arrived.
+
+This paper presents the design, implementation and evaluation of Giza - a strongly consistent, versioned object store that encodes objects across global data centers. Giza builds on top of existing cloud storage systems. 
+%It leverages cloud blob storage to store data and cloud table storage to store metadata.
+This architecture choice leads to simplified development, deployment and operation. Giza implements the Paxos consensus algorithms to achieve strong consistency. We address unique challenges implementing Paxos with restricted cloud storage APIs. Giza is heavily optimized in its data and metadata path. As a result, Giza is fast in normal operation for our target workloads.
+% At the same, Giza is guaranteed correct when failures or anomalies do arise.
 
 Giza is deployed to xxx data centers and our evaluation demonstrates its effectiveness. Giza is additionally compared to CockroachDB, an open source implementation of Google spanner. The comparison shows that Giza achieves much lower latency than naively adopting a globally consistent storage system.
 
