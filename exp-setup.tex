@@ -1,39 +1,45 @@
 \begin{figure*}
-\begin{tabular}{c|c|c|c|c}
-& coding rate & \# of DCs & DC location & Max Ping Latency\\
+\begin{tabular}{c|c|c|c|c|c}
+& coding rate & \# of DCs & DC location & Metdata DC location & Max Ping Latency\\
 \hline
-US-2-1 & 2+1 & 4 & Central, South Central, West & 40 ms\\
-US-6-1 & 6+1 & 8 & Central, South Central, West, West Central, North Central, South Central, East1, East2& 42 ms\\ 
-world-2-1 & 2+1 & 4 & Central, Europe North, Japan East & 140 ms\\
-world-6-1 & 6+1 & 8 & Central, South Central, West, Europe North, UK West, Japan East, Japan West  & 142 ms\\
+US-2-1 & 2+1 & 3 & Central, South Central, West & Central, South Central, West & 46 ms \\
+US-6-1 & 6+1 & 7 & Central, South Central, West & Central, South Central, West & 71 ms\\ 
+World-2-1 & 2+1 & 3 & Central, Europe North, Japan East & Central, Europe North, Japan East & 240ms\\
+World-6-1 & 6+1 & 7 & Central, South Central, West & Central, Europe North, Japan East & 241 ms\\
 \end{tabular}
 \caption{The DC configurations and inter-DC latencies in various experiments~\label{fig:dcconfig}} 
 \end{figure*}
 
 \subsection{Setup}
-Our experiments involve a varying number of DCs in different configurations. In
-each DC, we deploy a single Azure virtual machine (16 cores, 56 GB of RAM, and
-gigabit ethernet) and create a storage account for accessing Azure blob and
-table storage. Both the blob and table storage are configured with the
-``locally redundant'' replication level.  Each \name node accesses the local
-DC's cloud storage and also proxies the storage requests from \name nodes in
-other DCs.  
+Our experiments involve four different cluster configurations: 2-1-US, 2-1-World, 6-1-US, 6-1-World. Figure~\ref{fig:dcconfig} describes the following information for each cluster: the coding rate, the data centers constituting the entire cluster, the data centers participating in the metadata path, and the max ping latency between data centers. For each data center in a configuration, we deploy a single Azure virtual machine (16 cores, 56 GB of RAM, and gigabit ethernet) and a storage account. A locally redundant blob storage and table storage is created for each storage account.
 
-For CockroachDB experiments, we run a CockroachDB cluster spanning across
-multiple DCs.  We use the same set of Azure virtual machines and run a single
-CockroachDB node per DC. Our configuration of CockroachDB follows the
-recommended production settings by the developers of CockroachDB. For example,
-we run NTP to synchronize the clocks of different CockroachDB nodes. 
+For the CockroachDB experiment, we run a CockroachDB cluster spanning three data centers (the same as our 2-1-US configuration). For each data center, we run three cockroach nodes in a single virtual machine (the same vm we used for the Giza experiments), each writing to a separate hdd with no memory caching. Our configurations for each cockroach node follows the recommended production setting by the developers of CockroachDB. For example, we run NTP to synchronize clocks of different CockroachDB nodes.
 
-We generate experimental workloads using the YCSB benchmark. In the generated
-workload, the probability of accessing a given key follows a Zipf distribution.
-We experiment with different object sizes ranging from 128KB to 4MB. 
+We evaluate the latency performance of Giza and CockroachDB by running 1000 operations (for put and get) during the same timeframe. This is because the latency results obtained at different time throughout the day or week can vary significantly. For all latency performance, we report the 50th percentile with a confidence interval. We refrain from using the 95th percentile due to the high variability of the tail distribution observed in public cloud platforms. Since the performance of Giza is determined by the performance of the underlying infrastructures (Azure Table and Azure Storage), we also  provide latency benchmark for Azure’s Table and Blob storages in Figure 5. Figure 5a shows the vm to local azure table latency for all the vms participating in the metadata path. The put and get latency are pretty consistent across vm with the put latency being around 60ms and the get latency being around 10ms. Figure 5b shows the vm to local azure storage latency. Here, the latency varies widely from vm to vm with some latencies being double of others. The storage latencies also increase with the object sizes.
 
-We experiment with four diffferent DC configurations, as shown in
-Figure~\ref{fig:dcconfig}.  These configurations correspond to different coding
-rates and different choices of DCs, either within US-only or spread across the
-world. The wide-area latency across different DCs plays an important role in 
-the performance of \name.  Figure~\ref{fig:dcconfig} reports the majority
-latency (measured as the latency required to get a response from a majority
-quorum of DCs) and the maximum latency between DCs.
+%Our experiments involve a varying number of DCs in different configurations. In
+%each DC, we deploy a single Azure virtual machine (16 cores, 56 GB of RAM, and
+%gigabit ethernet) and create a storage account for accessing Azure blob and
+%table storage. Both the blob and table storage are configured with the
+%``locally redundant'' replication level.  Each \name node accesses the local
+%DC's cloud storage and also proxies the storage requests from \name nodes in
+%other DCs.  
+
+%For CockroachDB experiments, we run a CockroachDB cluster spanning across
+%multiple DCs.  We use the same set of Azure virtual machines and run a single
+%CockroachDB node per DC. Our configuration of CockroachDB follows the
+%recommended production settings by the developers of CockroachDB. For example,
+%we run NTP to synchronize the clocks of different CockroachDB nodes. 
+
+%We generate experimental workloads using the YCSB benchmark. In the generated
+%workload, the probability of accessing a given key follows a Zipf distribution.
+%We experiment with different object sizes ranging from 128KB to 4MB. 
+
+%We experiment with four diffferent DC configurations, as shown in
+%Figure~\ref{fig:dcconfig}.  These configurations correspond to different coding
+%rates and different choices of DCs, either within US-only or spread across the
+%world. The wide-area latency across different DCs plays an important role in 
+%the performance of \name.  Figure~\ref{fig:dcconfig} reports the majority
+%latency (measured as the latency required to get a response from a majority
+%quorum of DCs) and the maximum latency between DCs.
 

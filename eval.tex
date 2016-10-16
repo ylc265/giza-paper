@@ -12,67 +12,44 @@ In addition, we provide evaluation results for encoding scheme ranging from 2-1 
 
 }
 
-For evaluation, we deploy Giza on top of the Microsoft Azure platform. The deployment reaches xxx data centers (xxx in North America, xxx in Europe and xxx in Asia). In each data center, we create a set of virtual machines as Giza nodes. We also create a number of Azure storage accounts. These storage accounts are local to individual DCs and allow access to Azure Blob storage and Azure Table storage in the DCs.
+For evaluation, we deploy Giza on top of the Microsoft Azure platform across up to 11 data centers (7 in North America, 2 in Europe and 2 in Asia). For each data center, we deploy a virtual machine that runs as the Giza node. As describe in section~\ref{sec:design}, all the Giza nodes are stateless. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
 
-We form \name storage account as a collection of the local Azure storage accounts. We also specify the erasure coding scheme for each account. For example, a North American only Giza storage account may apply $2+1$ erasure coding and consist of 4 data centers in the US, as xxx, xxx, xxx and xxx. A global Giza storage account may apply same coding and consist of 4 data centers across 3 continents, as xxx, xxx, xxx and xxx.
+%In each data center, we create a single virtual machines as a Giza node. We also create a number of Azure storage accounts. These storage accounts are local to individual DCs and allow access to Azure Blob storage and Azure Table storage in the DCs.
 
-As described in section~\ref{sec:design}, all the Giza nodes are stateless. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
+%We form \name storage account as a collection of the local Azure storage accounts. We also specify the erasure coding scheme for each account. For example, a North American only Giza storage account may apply $2+1$ erasure coding and consist of 4 data centers in the US, as xxx, xxx, xxx and xxx. A global Giza storage account may apply same coding and consist of 4 data centers across 3 continents, as xxx, xxx, xxx and xxx.
+
+%As described in section~\ref{sec:design}, all the Giza nodes are stateless. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
 
 \input{exp-setup}
+
 \subsection{Metadata Path Optimization}
-\sm {
-  Hey Shuai, here I will provide the graph compaing the two metadata paths and the datapath to illustrate that this optimization makes the metadata path the non-dominant path in most cases. I will also have a table with the latency breakdown. The motivation for this is to show that such an optimization can allow users to tune the latency performance by changing the erasure coding scheme. This would not be possible it we use the two round trip. I will provide different latency measurements (95th, 75th, 50th percentile, as well as average with error bar so we can choose one later. This is true for all latency results I will provide)
-}
-We measure Giza's latency performance by running 1000 write and read operations with a single threaded Giza node.We vary the object size (1mb and 4mb) and compared different configurations. 
-The 95th percentile latency result is shown in Figure 4. The four configurations we chose are 3 data centers in the US (2-1 erasure coding scheme), 3 data centers across the world, 7 data centers in the US (6-1 erasure coding scheme), and 7 data centers across the world. Both the configuration (i.e distance between data centers) and the size of the object impact latency peformance. Larger objects incur higher latency in both the vm to vm transfer and the local blob storage access. This can explain the similar put latency results between the 3 US data center configuration and the 7 US data center configuration. Even though in the 3 US data center configuration, the distance between the data centers are much shorter (Iowa, Illinois, and West Central), each data fragment is 2MB. We can see in Table 3 that this increases the latency performance for the data path. In the 7 US data center configuration, each data fragment is just 700 KB, which reduces latency even when the data centers are further away. 
+When comparing the performance between implementing the metadata path with Fast Paxos and Classic Paxos, we found two factors that are important in determining which configuration outperforms the other.  The first factor is whether the vm to local azure write latency is dominant in the metadata path and the second factor is the difference in the maximal distance between data centers in a fast quorum and a classic quorum. 
 
+The performance of the metadata path is determined by the request latency between the coordinator and the table storage of the furthest data center in the quorum. Each request to a remote table storage is broken down into two parts: vm to vm latency and vm to local azure storage latency. From our previous analysis, the write latency from a vm to its local azure storage is around 60 milliseconds. The vm to vm latency is determined by the location of the data centers and can range from 20 milliseconds (us central to us south central) to 240 milliseconds (east Japan to north Europe). Figure~\ref{fig:metadata} illustrates the latency difference between the two Paxos schemes. The metadata path latency is broken down into three parts: query version latency, the table access latency, and the transfer latency. The query version latency, a simple read from the proposer’s local table to determine the possible highest version, is not part of the consensus protocol and is the same for both Fast and Classic Paxos. The table access latency is the local table access latency of the vm that is furthest away from the coordinator in the quorum. Since Classical Paxos requires two rounds and hence two table accesses, the Classic Paxos table access latency is consistently around twice the latency of the Fast Paxos table access. The transfer latency is the amount of time spent on network communication between the coordinator and the furthest vm in the quorum. Here the latency of the Classic Paxos, which incurs two round trip, is not strictly twice as much as the latency of the Fast Paxos. This is because the Classic quorum size is smaller than the Fast quorum size.
 
+In the top row of figure, we see that when the vm to local azure storage latency dominates the metadata latency (in the case of the 2-1 US configuration), the latency of Fast Paxos metadata path is lower than that of the Classic Paxos metadata path no matter which region you start the request from. In addition, if the max distance between the data centers in a fast quorum is close to that in a classic quorum, the latency of the Fast Paxos metadata path is half of that of the Classic Paxos metadata path. In certain scenarios, it is possible for Classic Paxos to achieve lower latency than Fast Paxos. While we didn’t observe this in our two configurations, we see that if we start the request from North Europe in the 2-1 world configuration, the latencies are almost the same. This is because a Fast Paxos round requires a bigger quorum response and in this case, a fast quorum consists of North Europe, US, and East Japan. The vm to vm latency between North Europe and East Japan is 240 milliseconds while the vm to vm latency between North Europe and US is only 102 milliseconds. Hence the max distance between data centers in the classic quorum (US and North Europe) is less than half of that of the fast quorum. The scenario in which the Classic Paxos scheme outperforms the Fast Paxos scheme is:
+\[max\_dist(F) > 2 * max\_dist(Q) + \textrm{extra table access}
+\]
+where F is the fast quorum size and Q is the classic quorum size.
+\input{fig_metadata}
 
-\subsection{Decomposing \name Latencies}
-
-In our workloads, the predominant object size is 4MB. Hence, we focus on the {\em put} and {\em get} latency of 4MB objects in the evaluation. For every data point reported in this section, we repeat the corresponding Giza operation 1000 times and then calculate the latency at desired percentile. The global Giza storage account with 4 DCs is used for this evaluation.
-
-\subsubsection{Data Path Tunneling}
-
-\Cref{fig:eval_tunneling} shows the latency comparison between data path with tunneling and 
-directly accessing remote blob storage without tunneling. The median latency with tunneling 
-is xxx ms, vs xxx ms without tunneling. In addition, the latency with tunneling is much 
-more stable over time. Its (90\%, 10\%) latency is (xxx ms, xxx ms), while without tunneling 
-is (xxx ms, xxx ms). The variance without tunneling probably comes from the blob storage 
-has a huge public load and it varies over time. Although in practice \name without tunneling 
-should bring the same level of performance improvement, we chose tunneling for the rest of 
-the evaluation to have more analysis-friendly results.
-
-\subsubsection{Metadata Path}
-
-To show the effects of our fast path design of metadata, we mesured the metadata path latency 
-for both fast path and slow path, as shown in~\Cref{fig:eval_fastpath}. As expected, the fast 
-path takes one network roundtrip plus the table read/write latency (with median at xxx ms); 
-the slow path takes two roundtrips, whose latency is about twice of fast path (with median at 
-xxx ms). This test concludes that the fast path optimization is critical to \name overall 
-
+\subsection{\name Latency}
+The design of Giza went through multiple iterations and this section illustrates the performance gain in latency for each iteration. In our workloads, the predominant object size is 4MB. Hence, we focus on the {\em put} and {\em get} latency of 4MB objects in the evaluation. For the interest of space, we chose the 2-1-World configuration where US Central generates all requests as representative of the performance gain seen in other configurations.
 
 \subsubsection{Giza Put Latency}
 %\subsubsection{Giza Latency}
 \input{fig_lat}
 
-Figure~\ref{fig:eval_giza_put} shows the \name overall put latency for 4MB data. In comparison, 
-we tested two possible alternative designs: a sequential datapath with slow metadata 
-path (as normal Paxos); parallel datapath with slow metadata path. In addition, we also 
-included a one across datacenter RPC plus blob storage access test as baseline (it does 
-not gurantee any level of consistency).
+Figure~\ref{fig:eval_giza_put} shows the \name overall {\em put} latency for 4MB data. We compare Giza with two previous iterations where the metadata path is not parallelized with the data path. In the first iteration, Giza runs the data path first. Upon success, Giza runs the metadata path with Classic Paxos implementation. In the second iteration, we replaced Classic Paxos with Fast Paxos and see the performance gain described previously. While parallelizing metadata path with data path can results in extra metadata or data clean up if one of them fails, the performance gain is significant. We also included a baseline which is the blob store latency from the requester (US Central) to the furthest data center (Japan East).
 
-The results show that \name's performance beats the other two alternatives and has closest
-latency to the baseline. The median latency of \name put is xxx ms, which is only xxx ms
-higher than the baseline. On the other hand, the serial version with only slow path takes 
-xxx ms, and the parallel version with slow path takes xxx ms.
+The results show that \name's performance beats the other two alternatives in the common case and has closest
+latency to the baseline. The median latency of \name put is 374 ms, which is only 30 ms
+higher than the baseline. This is due to the latency of erasure coding 4mb data. On the other hand, the serial classic paxos version takes 
+xxx ms, and the serial fast paxos version takes xxx ms.
 
 \subsubsection{Giza Get Latency}
 
-Similar to the put test, we did a \name get test, as shown in Figure~\ref{fig:eval_giza_get}. 
-\name also beats the other two alternatives, with a median latency xxx ms, higher than 
-the baseline by xxx ms. The gap between \name and baseline is higher because in the get 
-operation \name needs to do a local table retrieve first before starting the datapath. 
+Similar to the put test, we did a \name get test, as shown in Figure~\ref{fig:eval_giza_get}. The alternative design here is the non-optimistic {\em get } where the most current version for a blob is not assumed to be stored in the current data center. Hence, the metadata path and data path are executed sequentially. We see the performance gain from the pessimistic version with a median latency xxx ms to the optimistic version's xxx ms. Giza's get latency is higher than the baseline by xxx ms. The gap between \name and baseline is higher because in the get operation \name needs to do a local table retrieve first before starting the datapath. 
 
 %The results are expected. The \name put latency consists of a 
 %metadata put latency and datapath latency. 
@@ -98,21 +75,67 @@ operation \name needs to do a local table retrieve first before starting the dat
 
 \input{fig_four}
 
-\name offers customers the flexibility to choose the set of data centers, as well as the 
-erasure coding schemes. To show the performance of different configurations, we evaluate 
-4 different \name storage accounts, with the cross combination of $2+1$ vs $6+1$ erasure 
-coding and all data centers in North America vs across 3 continents.
+\name offers customers the flexibility to choose the set of data centers, as well as the erasure coding schemes. As the main goal of Giza is storage cost reduction, we want to encourage erasure encoding with more numbers of data fragments. Because Giza’s latency performance is determined by the max of the data path and the metadata path and data path is most often the dominant latency, erasure coding with higher number of data fragments can actually improve latency performance. This is because more data fragments means that less bytes are sent to each storage, reducing the overall data path latency. Figure~\ref{fig:eval_giza_put_four} and  Figure~\ref{fig:eval_giza_get_four} illustrate this in our four configurations with 4MB data, with all requests generated from US-Central. This improvement of performance with higher configurations occurs when the max distance between the data centers in the higher configuration group (7 data centers) is not more than the max distance between the data centers in the lower configuration group (3 data centers).
 
-Figure~\ref{fig:eval_giza_put_four} shows the put latency for different configurations; 
-Figure~\ref{fig:eval_giza_get_four} shows the get latency. When the system is deployed within 
-North America, it has more stable latency results with both coding schemes. The $6+1$ coding
-is faster because it gives more parallelism for the data path. Because the data is fixed, 
-having more datacenters means smaller data fragments. The world-wide deploy shows much 
-more invariance in performance, which is expected because the system is facing the across-
-continent internet traffic. The $6+1$ performs better in this setup, in terms of the 
-both median latency and variance. 
 
-\input{eval_cock}
+\subsection{Comparing Giza with CockroachDB}
+We only compare Giza's US-2-1 configuration with CockroachDB since CockroachDB currently does not fully support world wide geo-replication. We also don't include comparison to  the US-6-1 scheme in the interest of space.
+
+We implemented Giza put and get as transactions. Because CockroachDB fully supports ACID transactions, we can use CockroachDB to build a strongly consistent key value store that encodes objects across multiple data centers. To do this, we create four different tables: a metadata table and 3 tables that serves as key value stores for each of the data centers. The metadata table is replicated across all three data centers, once in each data center, and can tolerate one data center failure. Each of the remaining tables is replicated 3 times in its respective data center. Since CockroachDB uses Paxos for replication, the write critical path only requires the completion of 2 our of 3 replications. This is to match the local replication factor in the Azure storage where each blob is synchronously replicated once on the write critical path.
+
+The implementation of Giza put as a transaction consists of storing each data fragments at the corresponding key value table and storing the metadata information in the metadata table. This transaction involves all four tables for a 2,1 configuration. Figure~\ref{fig:eval_cock_put} compares the latency performance of the two. Here Giza outperforms CockroachDB significantly.
+However CockroachDB is currently not suited for storing large objects, as specified by the developers. We also tested CockroachDB with 128KB objects (This is 64KB after encoding, which is the largest size CockroachDB can handle before large performance degradation). As seen in Figure~\ref{fig:eval_cock_put2}, even with just 128KB, the performance of CockroachDB is still worse than the performance of Giza even with 4MB objects.
+
+The implmentation of Giza get as a transaction consists of reading from the metadata table and reading the minimum amount of data fragments, in this case two, from the key value tables. This transaction involves three out of the four tables. Figure~\ref{fig:eval_cock_get} shows the performance comparison. Here CockroachDB performs better than Giza. However, this is not surprising. CockroachDB reads directly from hdd, which is faster than Giza's read from the Azure storage.
+
+
+%To set up CockroachDB, we use the same azure virtual machine instances and run a single CockroachDB node. We followed the recommended production settings by the developers of CockroachDB when deploying these instances. For example, on the same virtual machine, we also run NTP to provide moderately accurate time to preserve data consistency. Other optimizations can be found on the CockroachDB website. We only benchmark CockraochDB against Giza in the 3 dc cluster scenario since we want the fault tolerance level to be the same for the comparisons.
+%Since variability in latency is a factor when benchmarking cloud storage, we run all our experiments at approximately the same time.
+%Since latency is an issue, we run all our experiments at around the same time.
+%We experimented with different erasure coding schemes
+% For all experiments, we deployed a single virtual machine (16 cores, 56 GB of RAM, 800 GB SSD, and gigabit ethernet) for each geographical region. We use the same virtual machines for setting up the Cassandra and CockroachDB clusters. The client issuing the requests runs on one of the virtual machine that is also part of the cluster. 
+% To set up Giza, we also had to deployed both a table service and a blob service provided by the cloud service platform. The granularity of replication for these services varies from provider to provider but we always choose the replication level to match that of the regional replication. This means that as long as there’s no dc outage, the data would not be lost. For each data center, we run a Giza node frontend with the virtual machine. The Giza node can service requests from a client running in the virtual machine. In addition, requests to its local table and blob storage from other Giza nodes also go through the Giza node frontend in the form of an RPC call. This is to avoid unecessary WAN round trips when dealing with complicated table and blob storage operations. 
+\input{fig_cock}
+
+%\sm {
+%  In this section, I will have two graphs. One comparing Giza's full write path with CockroachDB's full replication. Another one is comparing the metadata path with cockroach db. This is to show, hopefully, that the fast paxos scheme is better. I will probably have 3 graphs each making request from one of the three datacenters. Due to multipaxos, there might be extra latency for cockroachdb's case.
+%}
+%We benchmark the performance of Giza with CockroachDB in two cases. In the first case, we use CockroachDB as a geo-replicating blah blah blah. Here is the result.
+%In the second case, we used cockroachdb's transaction to simulate what we are doing with Giza. Blah blah blah, here is the result.
+%64K $\sim$ 16MB
+
+%X-axis: Value size
+%Y-axis: 50\% Read latency
+
+%X-axis: Value size
+%Y-axis: 90\% Read latency
+
+%X-axis: Value size
+%Y-axis: 99\% Read latency
+
+%Same for write
+
+%[adding cpu results in a table]
+
+% \subsection{Large object}
+% 256MB $\sim$ 1GB
+
+% X-axis: Value size
+% Y-axis: Average Read latency
+
+% X-axis: Value size
+% Y-axis: Average Write latency
+
+
+% \subsection{Contention}
+
+% Fixed object size
+% X-axis: zipf coefficient
+% Y-axis: 50\%, 90\%, 99\% Read/Write Latency
+
+
+% \subsection{Real workload}
+% Table.
 
 
 %%% Local Variables:
