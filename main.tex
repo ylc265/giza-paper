@@ -218,7 +218,27 @@
 %%%
 %%%  Bibliography
 %%%
-\usepackage[numbers]{natbib}
+
+\usepackage[
+    backend=biber,
+    firstinits=true,
+%    style=authoryear-icomp,
+%    sortlocale=de_DE,
+%    natbib=true,
+%    url=false, 
+%    doi=true,
+    maxbibnames=10,
+    eprint=false
+]{biblatex}
+\bibliography{ref} 
+
+\DeclareFieldFormat[inproceedings]{title}{#1} 
+\DeclareFieldFormat
+  [article]
+  {title}{#1}
+\DeclareFieldFormat
+  [book]
+  {title}{#1}
 
 %%%
 %%%  Footnotes / Endnotes
@@ -397,11 +417,11 @@ Copyright 200X ACM X-XXXXX-XX-X/XX/XX ...\$5.00}
 % Comments for people we need to ack in the final version
 
 %% Bibliography
-\setlength{\bibsep}{2pt plus 1pt}  % plus 1pt seems to avoid widows/orphans
+
 \small 
 % \footnotesize % SPACE
-\bibliography{ref}
-\bibliographystyle{abbrvnat}
+
+\printbibliography
 %\nocite{*}
 \input{pc}
 %\bibliographystyle{abbrvnat_noaddr} % SPACE

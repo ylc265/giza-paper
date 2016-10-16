@@ -174,14 +174,16 @@ the latest committed version number might yet have to be included.
 
 \subsubsection{Meta-data Write - Common Case}
 
-The metadata path begins with choosing a proper new version number to run the Fast Paxos~\cite{fastpaxos} algorithm.
-Since version numbers are consecutive, the new version needs to be next to the most recently committed version.
-While it is safe to use an outdated version
-(in which case the {\name} node will later realize its mistake and retry with a higher version number),
-it is unsafe to choose a higher one and results in non-consecutive versions.
-The {\name} node identifies the proper version in an optimistic fashion.
-Specifically, it reads {\tt known committed versions} from the table in its local DC,
-then uses the next higher number as the chosen version number to invoke the corresponding Fast Paxos instance.
+The metadata path begins with choosing a proper new version number to run the
+Fast Paxos~\cite{lamport05fast} algorithm. Since version numbers are
+consecutive, the new version needs to be next to the most recently committed
+version. While it is safe to use an outdated version (in which case the {\name}
+node will later realize its mistake and retry with a higher version number), it
+is unsafe to choose a higher one and results in non-consecutive versions. The
+{\name} node identifies the proper version in an optimistic fashion.
+Specifically, it reads {\tt known committed versions} from the table in its
+local DC, then uses the next higher number as the chosen version number to
+invoke the corresponding Fast Paxos instance.
 
 With the version number chosen, the {\name} node replicates a PreAccept request
 to the tables in all the DCs.
