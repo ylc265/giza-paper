@@ -1,7 +1,9 @@
-\section{Design Considerations}
+\section{The Case for Giza}
 \label{sec:motivation}
 
-\subsection{The Case for Giza}
+This section presents the characteristics of cloud drive workloads and motivates the design choices of Giza.
+
+\subsection{Cloud Storage Workloads}
 
 \begin{figure}[tp]
 %\centering
@@ -24,6 +26,12 @@
 \label{fig:case_for_giza}
 \end{figure}
 
+{\bf \em Methodology} The data presented in this section is derived from a three-month trace of a large-scale cloud drive service with hundreds of millions of users. The trace includes {\em all} the reads, writes and updates to {\em all} the data objects in the service.
+
+{\bf \em Large Objects Dominate} The cloud drive stores customers' data objects, including documents, photos, music, videos and more. The size of the data objects vary significantly, ranging from Kilobytes to tens of Gigabytes. While the total number of small objects vastly exceeds that of large objects, the storage capacity occupied by the small objects turns out extremely small. Figure~\ref{fig:object_size-storage_capacity} presents the distribution of storage capacity occupied by data objects of various size. Less than $0.9\%$ of the total storage capacity is occupied by data objects of 4MB and below. To optimize storage capacity and simplify system design, Giza focuses on data objects of 4MB and larger~\footnote{Data objects of tens of Gigabytes are divided into 4MB chunks by the cloud drive service before storing in the cloud storage back-end.}.
+
+{\bf \em Object Temperature Drops Fast} A common usage scenario of cloud drive is sharing. When data objects are stored in the cloud drive, they are often shared across multiple devices, as well as among multiple users. Therefore, it is typical to observe reads of the data objects soon after they are stored. Figure~\ref{fig:write_read_gap-bytes_read} presents the distribution of bytes read given the age of the data objects when these reads occur. It is worth pointing out that $47\%$ of the bytes read occurred in the same day as the data objects are stored, $87\%$ of the bytes read occurred within the same week, and less $2\%$ of the bytes read occurred beyond one month. This suggests that the temperature of the data objects stored in the cloud drive drops at a fast space. In turn, it makes sense to cache the data objects for a short period of time, which would serve most of the reads.
+
 \begin{table}[tp]
 \centering
 \begin{tabular}{|c||c|c|}
@@ -45,6 +53,8 @@ with Giza
 \caption{Giza with Caching in Local DC.}
 \label{tab:caching}
 \end{table}
+
+{\bf \em Writes Dominate with Caching} Table~\ref{tab:caching} further analyzes the effectiveness of caching. It presents the ratio between the total amount of bytes due to reads and writes. The ratio of 2.3$\times$ suggests that each data object stored in the cloud drive is read 2.3$\times$ on average. Assuming the 2 + 1 Giza scheme, serving an object of 4MB involves reading a 2MB data fragment from the local DC and another 2MB data or coded fragment from a remote DC. Therefore, half of every data object is retrieved from a remote DC and incurs cross-DC network traffic. If there were no caching after data objects are stored, $50\%$ of all bytes reads would have incurred cross-DC network traffic. In this sense, the ratio between cross-DC reads and writes is 1.15$\times$. The ratio is dramatically reduced as soon as data objects are cached within local DCs in addition to being erasure coded across DCs. The caches objects would therefore serve reads whenever possible. Table~\ref{tab:caching} further suggests that a simple caching policy can be quite effective. When every data object is caches for one single day after it is stored, the ratio between cross-DC reads and writes drop to 0.61$\times$, which further reduces to 0.05$\times$ when the object is cached for one month. In other words, the cross-DC network traffic is dominated by writes with caching in local DC employed.
 
 %\subsection{Giza: Flexible Cross-DC erasure coding }
 %

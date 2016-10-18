@@ -141,7 +141,7 @@ The blob and table storage within individual data centers operate independently.
 Hence, while strongly consistent individually, the collection of the blob and
 table storage across multiple data centers do not readily offer the desired
 linearizability. The key technical challenge Giza addresses is how to achieve
-optimal {\em put} with singler writer, while at the same time provide
+optimal {\em put} with single writer, while at the same time provide
 linearizability under concurrency, over the collection of individual blob and
 table storage across multiple data centers.
 
