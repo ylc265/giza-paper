@@ -122,7 +122,7 @@
 \newcommand{\AUTHORS}{Paper \#xxx}
 %\newcommand{\TITLE}{JANUS: Jesus! Another traNsaction and consensUS protocol}
 %\newcommand{\TITLE}{Unifying Concurrency Control and Consensus for More Commits and Lower Latency}
-\newcommand{\TITLE}{Project Giza: Replicating Erasure Coded Objects \\ across Global Data Centers}
+\newcommand{\TITLE}{Giza: Erasure Coding Objects across Global Data Centers}
 \newcommand{\KEYWORDS}{Put your keywords here}
 \newcommand{\CONFERENCE}{Somewhere}
 \newcommand{\PAGENUMBERS}{yes}       % "yes" or "no"
@@ -155,12 +155,12 @@
 \usepackage{ifthen}
 \ifthenelse{\equal{\PAGENUMBERS}{yes}}{%
   \usepackage[nohead,
-            left=1.0in,right=1.0in,top=1.0in,
+            left=0.75in,right=0.75in,top=1.0in,
             footskip=0.5in,bottom=1in,     % Room for page numbers
             columnsep=0.25in
             ]{geometry}
 }{%
-\usepackage[noheadfoot,left=1.0in,right=1.0in,top=1.0in,
+\usepackage[noheadfoot,left=0.75in,right=0.75in,top=1.0in,
             footskip=0.5in,bottom=1in,
             columnsep=0.25in
 	    ]{geometry}
@@ -174,17 +174,17 @@
 %\usepackage{subfig}
 %%  Space between figure and caption (assuming caption
 %%  is below figure)
-%\usepackage[font=bf,aboveskip=0pt]{caption} % SPACE
+\usepackage[font=bf,aboveskip=0pt]{caption} % SPACE
 %%  Space between caption and body text of document
-%\addtolength{\textfloatsep}{-7pt} % SPACE
+\addtolength{\textfloatsep}{-7pt} % SPACE
 
 %%%
 %%%  Section headings
 %%%
 \usepackage[compact]{titlesec}
-%\titlespacing{\paragraph}{0pt}{*1}{*1}      % SPACE
+\titlespacing{\paragraph}{0pt}{*1}{*1}      % SPACE
 %\titlespacing{\section}{0pt}{1pt}{1pt}      % SPACE
-%\titlespacing{\subsection}{0pt}{2pt}{1pt}      % SPACE
+\titlespacing{\subsection}{0pt}{2pt}{1pt}      % SPACE
 %\usepackage[compact]{titlesec}              % SPACE
 %\titleformat{\section}%                     % IEEE/ACM: caps + period
 %  {\bf\large\uppercase}{\thesection.\quad}{0pt}{}
