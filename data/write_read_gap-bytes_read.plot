@@ -8,7 +8,7 @@ set output '|gs -sDEVICE=pdfwrite -sOutputFile=- -dBATCH -dNOPAUSE  -f - | pdfcr
 
 set key right bottom box height .75
 
-set xlabel 'Object Age when Read (day)'
+set xlabel 'Object Age when Read'
 set ylabel 'CDF (%)'
 set logscale x
 set ytics ("0" 0, "20" 0.2, "40" 0.4, "60" 0.6, "80" 0.8, "100" 1)
