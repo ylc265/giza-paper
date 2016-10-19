@@ -88,6 +88,18 @@ However CockroachDB is currently not suited for storing large objects, as specif
 
 The implmentation of Giza get as a transaction consists of reading from the metadata table and reading the minimum amount of data fragments, in this case two, from the key value tables. This transaction involves three out of the four tables. Figure~\ref{fig:eval_cock_get} shows the performance comparison. Here CockroachDB performs better than Giza. However, this is not surprising. CockroachDB reads directly from hdd, which is faster than Giza's read from the Azure storage.
 
+\subsection{Giza Throughput}
+We evaluate the throughput of Giza in a local-area cluster. Figure xxx shows the result of a single Giza deployment for storing 4MB objects. The 24 ops per second equates to 144MB per second which is consistent with the 150MB per second cap for each Azure Virtual Machine. For each additional Giza node, we add three storage accounts. This is to deal with the current throughput cap per storage account, which is 200MB per second.  The keyspace is partitioned equally among sets of three storage accounts. Figure~\ref{fig:gizathroughput} depicts the throughput as we increase Giza nodes. Here, the throughput increases linearly. 
+
+\begin{figure*}
+\begin{tabular}{c|c|c|c|c|c}
+Giza Nodes & 1 & 2 & 3 & 4 & 5\\
+\hline
+ops/second & 24 & 34 & 49 & 73 & 96 \\
+MB/second & 144 & 204 & 294 & 438 & 576\\ 
+\end{tabular}
+\caption{Throughput result of local Giza cluster\label{fig:gizathroughput}} 
+\end{figure*}
 
 %To set up CockroachDB, we use the same azure virtual machine instances and run a single CockroachDB node. We followed the recommended production settings by the developers of CockroachDB when deploying these instances. For example, on the same virtual machine, we also run NTP to provide moderately accurate time to preserve data consistency. Other optimizations can be found on the CockroachDB website. We only benchmark CockraochDB against Giza in the 3 dc cluster scenario since we want the fault tolerance level to be the same for the comparisons.
 %Since variability in latency is a factor when benchmarking cloud storage, we run all our experiments at approximately the same time.
