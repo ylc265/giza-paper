@@ -70,19 +70,18 @@ making cross-DC erasure coding economically attractive.
 
 \begin{figure}[tp]
 \centering
-\includegraphics[width=0.5\textwidth]{images/giza_example_crop_fit}
+\includegraphics[width=0.4\textwidth]{images/giza_example_crop_fit}
 \caption{Storing Object in Giza}
 \label{fig:giza_example}
 \end{figure}
 
 \subsection{Giza Overview}
 
-Project Giza exploits the trend of cross-DC bandwidth cost reduction
+Giza exploits the reduction in cross-DC bandwidth cost
 and leverages erasure coding to optimize the total cost of storing customer data in the cloud.
 %upon such technology addresses key technical challenges so as to turn cross-DC erasure
 %coding from an economically attractive proposal to a practically sound reality.
-More specifically,
-Giza offers an externally consistent (linearizable~\cite{herlihy90linearizability}),
+It offers an externally consistent (linearizable~\cite{herlihy90linearizability}),
 versioned object store that erasure codes objects across global data centers.
 %Giza provides an externally consistent (linearizable~\cite{herlihy1990linearizability}) versioned cloud storage service, which erasure codes data objects and stores them across globally distributed data centers.
 
@@ -99,26 +98,24 @@ Giza gives the customers complete control of storage overhead and durability.
 
 The customers access Giza with straightforward {\em put}, {\em get} and {\em delete} interface. In addition, Giza supports versioning, where new {\em put} does not overwrite existing data, but rather creates a new version of the same data. The old version remains available until it is explicitly deleted.
 
-Giza operates on top of existing cloud storage systems. It stores customer data
+Giza operates on top of existing cloud storage systems. It stores data
 objects in cloud blob storage and the metadata of the objects in cloud table
 storage. Figure~\ref{fig:giza_example} illustrates an exemplary flow of storing
-an object of 4MB.
+an object in Giza.
 %Giza operates a number of {\em stateless} Giza nodes in every data center. Say a customer uses a Giza client (command line, library, or REST interface) to store a 4MB data object. The Giza client routes the {\em put} request to one of the Giza nodes in the data center closest to the customer.
-Giza divides the data object into $2$ data fragments ($a$ and $b$) of 2MB each.
-It then encodes the data fragments to generate a parity fragment $p$ of size
-2MB. All the $3$ coded fragments (2 data and 1 parity) are stored in the blob
-storage in 3 data centers. The metadata, consisting of the pointers to the
-blobs, as well as versioning information, is stored in the table storage across the
+Giza divides the object into two data fragments ($a$ and $b$) and encodes them to a parity fragment $p$.
+The fragments are stored respectively in the blob storage in three data centers. The metadata, consisting of the pointers to the
+blobs, as well as versioning information, is replicated in the table storage across the
 same data centers.
 
 \subsection{Challenges and Contributions}
 
 Giza targets large objects in cloud drive services, such as
 Dropbox, Google Drive, and Microsoft OneDrive, etc.
-Section~\ref{sec:motivation} presents detailed characteristics of such services,
-which are briefly summarized here:
+Detailed characteristics of such services are presented in Section~\ref{sec:motivation}
+and summarized here:
 1) large storage space consumption,
-2) relatively cold data, where a very small percentage of objects are accessed
+2) cold data, where a tiny percentage of objects are accessed
 beyond certain period after creation,
 3) objects may be updated over time, but concurrent updates of the same
 object are rare (albeit possible).
