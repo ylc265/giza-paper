@@ -73,15 +73,15 @@ as specified in {\tt known committed version}.
 
 \subsection{Deletion and Garbage Collection}
 
-Giza supports two types of deletion operation: trimming earlier versions and deleting entire data object.
+Giza supports two types of deletion operation: trimming earlier versions and deleting an entire object.
 To control the size of the metadata table rows, Giza limits the number of versions for each object.
 Once the limit is reached, writing a new version automatically trims the earliest version.
 
 Deleting a specific version is processed as a special update of the object's metadata.
-It again executes the Paxos algorithm and creates a new version to record a deletion record for the deleted version.
-Once the deletion record is successfully committed,
-Giza garbage collects and reclaims the storage spaced occupied by the coded fragments of the deleted version.
+\name executes the Paxos algorithm to write a garbage collection record containing
+the version $v$; any version $v'\leq v$ will be garbage collected.  
 
+Giza garbage collects and reclaims the storage spaced occupied by the coded fragments of the deleted version.
 \comment{
 Because {\name} keeps writing new version metadata to table service and data fragments
 to blob storage service, it needs to garbage collect on outdated versions to recycle
@@ -92,14 +92,14 @@ tombstone by the delete operation.
 The garbage collection process includes deleting the coded fragments and
 truncating the column for the deleted version in the metadata table row.
 It follows three steps:
-1) read the metadata row and identify the column corresponding to the deleted version;
-2) send deletion requests to blob storage to delete the coded fragments;
-3) remove the column for the deleted version from the table storage.
+1) fetch the metadata corresponding to the version to be garbage collected.
+2) delete the coded fragments in the blob storage.
+3) remove the column for the deleted version from the metadata table row.
 The second step has to occur before the third one in case that
 the garbage collection process is interrupted and the coded fragments may become ``orphans''
 without proper metadata pointing to them in the table storage.
 
-To delete the entire object, 
+To delete an entire object, 
 {\name} first executes Paxos to commit a tombstone as the highest version.
 Then, it deletes the coded fragments corresponding to all the versions of the object.
 Finally, it starts to delete the entire table row from the tables across all the DCs.

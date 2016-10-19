@@ -190,7 +190,7 @@ to the tables in all the DCs.
 Each request is an {\em atomic conditional update} to the corresponding table in a single DC.
 If there are no competing requests on the same version, the PreAccept request will succeed in updating the table row.
 Otherwise, the PreAccept request will be rejected by the table and leave the table row unchanged.
-Section~\ref{sec:implementation} illustrates how atomic conditional update is implemented leveraging existing cloud APIs.
+Section~\ref{sec:impl} illustrates how atomic conditional update is implemented leveraging existing cloud APIs.
 
 Whenever the {\name} node receives a {\em fast quorum} of positive PreAccept responses,
 the corresponding version is considered to have been committed.
