@@ -1,132 +1,154 @@
-\section{Replica Configuration and Failure Recovery}
-
-This section discusses two practical aspects of a {\name} deployment, namely,
-how to configure which set of data centers to use for storing coded data
-fragments and replicating metadata, and how to handle failures.
-
-\subsection{Data center configuration}
-\label{subsec:config}
-
-\name supports a large number of paying customers, each of which is associated
-with his/her own storage account.  Each \name account is configured with a
-collection of three or more DCs that replicate the metadata and/or store the
-coded data framents.  The customer specifies a desired fault tolerance goal, and an acceptable cost
-of storing the data. The configuration determines the number of DCs that the customer's data will be stored, which in turn determines coding rate. For example, if the customer wishes to protect against
-one data center failure and is willing to pay $17\%$ extra for the protection,
-a 6+1 erasure code is to be used, and there should be 7 DCs in the configuration.  
-Furthermore, 3 among the 7 DCs are designated as metadata DCs that replicate 
-metadata in addition to storing coded data.
-The choice of DCs is determined by user preferences. For
-example, OneDrive could choose the DC where the user makes the most data access and 
-other closeby DCs for better peformance.
-
-The mapping from each \name account to its set of DCs is stored in a
-separate configuration service external to the \name system.  To service
-Get/Put requests for an account, \name retrieves the account's DC configuration
-from the external service and caches the information for future requests for a
-threshold period of time.
-
-{\bf Changing DC Configuration.} 
-The set of DCs for an account may be changed, either due to changing user
-preferences or recovering from a failed DC.  Each new DC configuration for an
-account is associated with a monotonically increasing identifier, view-id.
-Since configuration changes infrequently, we keep the history of all DC configurations.  The view-id is
-attached to each version of the object metadata. To change to a new DC
-configuration for an account, \name enters a grace period during which the
-cached DC configuration information in all {\name} nodes are invalidated.
-During the grace period, it is possible that some nodes use the old DC configuration
-while others use the new one. To ensure metadata consistency in this scenario,
-whenever \name writes a new version of the metadata whose previous version has
-the old DC configuration, its Paxos implementation obtains quorums in {\em
-both} the old and new configuration.  Therefore, DCs in the old and new
-configuration must concurrently agree on the same metadata version.
-
-The migration of coded data fragments from the old configuration of DCs to the
-new ones can happen outside of the grace period and in the background. Whenever
-an object's fragments have been moved or re-generated in the new DCs, the
-migration worker writes a new version of metadata for the object.
-Before the completion of data migration, it is possible that a {\em Get} operation 
-fails to obtain metadata or data in the new configuration.  In this situation, 
-{\name} retries the operation under the previous configuration.
-%similar to the failure recovery process, except that the migration process
-%needs to update the view id in the metadata. In case of coding reconfiguration,
-%i.e. the application changes the number of data fragments in encoding, the
-%migration process also needs to compute all the parity fragments for the new
-%view.
-
-
-\subsection{Failure Handling}
+\section{Failure Recovery}
 
 There are two categories of failures: {\name} node failures and DC failures.
 Since each \name node is stateless, handling node failure is simple: we can
-simply launch new machines to replace any failed ones.  We focus on how \name
-handles DC failures.
+simply launch new machines to replace any failed ones. In this section we focus
+on how \name handles DC failures.
 
 {\bf Transient DC failure.}
 We categorize the transient DC failure to include temporary outages of the blob
-and table storage service in a DC.  Giza copes with transient DC failure by
-design.
-
+and table storage service in a DC. Giza copes with transient DC failure by design.
 
 The table service and blob storage service are reliable in the face of machine
 failures within a DC.  When an entire DC becomes unavailable, such as a
-temporary network partition or an entire datacenter breakdown, {\name} can
-still serve Get/Put requests, albeit at degraded performance. When handling a Put, 
-\name takes two cross-DC roundtrips instead of one,
-because there are not enough DCs to make up a FastPaxos quorum when 1 out of 3 DCs
-replicating the metadata is down.  When handling a Get, \name must read the parity 
-fragment as well as data fragments to re-construct the entire data object.
-%for 
-%datacenter left. It is worth noticing that the threshold could be different for
-%metadata path and data path. For metadata, a majority of alive datacenters
-%are required. For data path, assume it writes to $N$ datacenters in total with
-%$m$ data fragments. To tolerate $F$ datacenter failures, it needs to write
-%to at least $F+m$ datacenters, which implies that $F<N-m$ (To tolerate $F$
-%failures, you need to have at least $F$ parities).
+temporary network partition or an entire datacenter breakdown, {\name} can still
+serve Get/Put requests, albeit at degraded performance. When handling a Put,
+\name takes two cross-DC roundtrips instead of one, because there are not enough
+DCs to make up a fast path quorum when 1 out of 3 DCs replicating the metadata
+is down. When handling a Get, \name must read the parity fragment as well as
+data fragments to re-construct the entire data object.
 
-When a datacenter comes back online after crash, it needs to update the
-metadata rows in its table service and data fragments in the blob storage.
-A number of recovering clients are launched to scan through its objects.
-For each object, it issues a normal read request except that it does not
-pre-fetch the data. If the local version match the global version, nothing
-needs to be done; if the local version is behind, the recovering process
-then reads the latest data fragments, re-calcuates the fragment that belongs
-to the local datacenter and writes it to the blob storage consistently with
-the metadata.
-
+When a datacenter comes back online after crash, it needs to update the metadata
+rows in its table service and data fragments in the blob storage. A number of
+recovering clients are launched to scan through its objects. For each object, it
+issues a normal read request except that it does not pre-fetch the data. If the
+local version match the global version, nothing needs to be done; if the local
+version is behind, the recovering process then reads the latest data fragments,
+re-calcuates the fragment that belongs to the local datacenter and writes it to
+the blob storage consistently with the metadata.
 
 {\bf Permanent DC Failure}
-Data center may fail catastrophically. The blob and table storage service
-within the DC may also experience long-term outages. We categorize these all as
-permanent DC failure.
+Although extremely rare, data center may fail catastrophically. The blob and
+table storage service within the DC may also experience long-term outages. We
+categorize these all as permanent DC failure. 
 
-\name handles permanent DC failure by triggering a DC configuration change 
-which replaces the failed DC with a new healthy one. This process is identical 
-to that required for the configuration change (Sec~\ref{subsec:config}) except
-\name also need to re-generate lost coded fragments instead of simply moving
-existing ones.  Furthermore, we prioritize work done to handle permanent DC
-failure over that for ordinary DC configuration change.
+\name handles permanent DC failure by replacing the failed replaces the failed
+DC with a new healthy one. Many failure recovery coordinators are launched to
+reconstruct the data fragments and re-insert the metadata row. This procedure is
+similar to how it handles transient failures yet may last much longer (weeks)
+because it needs to recover all objects. This is acceptable considering
+permanent data center failure happens rarely, perhaps only once in decades.
 
-%Permanent DC failure typically triggers a DC configuration change 
-%to migrate data and metadata from the failed DC to a new healthy one.
-%This, however, can be a subtle process.
-%Each storage account is configured with a set of DCs, which need to be updated to replace the failed DC with the new one.
-%For each data object, its missing fragment originally stored in the failed DC needs to be reconstructed and stored in the new DC.
-%Moreover, its metadata needs to be updated,
-%not only to reflect the new fragment location, but also the change of the set of DCs for the Paxos algorithm.
-%The latter is referred to as Paxos view change.
-%It is very tricky to correctly implement the Paxos view change mechanism, in light of continuous {\em get} and {\em put} operations, while at the same time dealing with the permanent DC failure.
-%
-%Fortunately, permanent DC failure is an extremely rare event
-%which allows Giza to resort to a much simplified approach.
-%Upon permanent DC failure, a new storage account is created to replace the old storage account affected by the failed DC.
-%The new storage account copies the set of DCs and replaces the failed DC with the new one.
-%Giza then enumerates the old storage account and copies every object to the new storage account.
-%The data path of copying an object to the new storage account is optimized to leave existing coded fragments unchanged, while only reconstruct and store missing fragments in the new DC.
-%In other words, Giza avoids unnecessary writes to the blob storage whenever possible.
-%To store metadata, the new storage account creates a new set of metadata tables.
-%The metadata path of copying the object therefore involves committing new metadata in the corresponding rows in the new metadata tables. The object is deleted from the old storage account after being successfully copied to the new storage account.
-%
+To ensure all \name nodes will read and write through the new DC instead of the
+old ones, we have a reliable DNS service storing the mapping from data center
+ids to actual ip addresses. Each \name node maintains a {\em lease} with the DNS
+service. The lease usually lasts for a time period, e.g. 30 minutes. Before the
+lease expires the node will renew the lease by refreshing its local DNS cache.
+During permanent DC failure recovery, we first update the mapping in the DNS
+service, then wait for a long enough time (e.g. $>$30 minutes) to make sure all
+giza nodes have the new mappings. The replicated DNS service already exists in
+many proprietary systems (e.g. Chubby~\cite{chubby:osdi06}) and has many open-source
+alternatives (e.g. ZooKeeper~\cite{zookeeper:atc10}) thus does not bring extra 
+implementation overhead to \name.
+
+
+%% \section{Replica Configuration Failure Recovery}
+
+%% This section discusses two practical aspects of a {\name} deployment, namely,
+%% how to configure which set of data centers to use for storing coded data
+%% fragments and replicating metadata, and how to handle failures.
+
+%% \subsection{Data center configuration}
+%% \label{subsec:config}
+
+%% \name supports a large number of paying customers, each of which is associated
+%% with his/her own storage account.  Each \name account is configured with a
+%% collection of three or more DCs that replicate the metadata and/or store the
+%% coded data framents.  The customer specifies a desired fault tolerance goal, and an acceptable cost
+%% of storing the data. The configuration determines the number of DCs that the customer's data will be stored, which in turn determines coding rate. For example, if the customer wishes to protect against
+%% one data center failure and is willing to pay $17\%$ extra for the protection,
+%% a 6+1 erasure code is to be used, and there should be 7 DCs in the configuration.  
+%% Furthermore, 3 among the 7 DCs are designated as metadata DCs that replicate 
+%% metadata in addition to storing coded data.
+%% The choice of DCs is determined by user preferences. For
+%% example, OneDrive could choose the DC where the user makes the most data access and 
+%% other closeby DCs for better peformance.
+
+%% The mapping from each \name account to its set of DCs is stored in a
+%% separate configuration service external to the \name system.  To service
+%% Get/Put requests for an account, \name retrieves the account's DC configuration
+%% from the external service and caches the information for future requests for a
+%% threshold period of time.
+
+%% {\bf Changing DC Configuration.} 
+%% The set of DCs for an account may be changed, either due to changing user
+%% preferences or recovering from a failed DC.  Each new DC configuration for an
+%% account is associated with a monotonically increasing identifier, view-id.
+%% Since configuration changes infrequently, we keep the history of all DC configurations.  The view-id is
+%% attached to each version of the object metadata. To change to a new DC
+%% configuration for an account, \name enters a grace period during which the
+%% cached DC configuration information in all {\name} nodes are invalidated.
+%% During the grace period, it is possible that some nodes use the old DC configuration
+%% while others use the new one. To ensure metadata consistency in this scenario,
+%% whenever \name writes a new version of the metadata whose previous version has
+%% the old DC configuration, its Paxos implementation obtains quorums in {\em
+%% both} the old and new configuration.  Therefore, DCs in the old and new
+%% configuration must concurrently agree on the same metadata version.
+
+%% The migration of coded data fragments from the old configuration of DCs to the
+%% new ones can happen outside of the grace period and in the background. Whenever
+%% an object's fragments have been moved or re-generated in the new DCs, the
+%% migration worker writes a new version of metadata for the object.
+%% Before the completion of data migration, it is possible that a {\em Get} operation 
+%% fails to obtain metadata or data in the new configuration.  In this situation, 
+%% {\name} retries the operation under the previous configuration.
+
+%% \subsection{Failure Handling}
+
+%% There are two categories of failures: {\name} node failures and DC failures.
+%% Since each \name node is stateless, handling node failure is simple: we can
+%% simply launch new machines to replace any failed ones.  We focus on how \name
+%% handles DC failures.
+
+%% {\bf Transient DC failure.}
+%% We categorize the transient DC failure to include temporary outages of the blob
+%% and table storage service in a DC.  Giza copes with transient DC failure by
+%% design.
+
+
+%% The table service and blob storage service are reliable in the face of machine
+%% failures within a DC.  When an entire DC becomes unavailable, such as a
+%% temporary network partition or an entire datacenter breakdown, {\name} can
+%% still serve Get/Put requests, albeit at degraded performance. When handling a Put, 
+%% \name takes two cross-DC roundtrips instead of one,
+%% because there are not enough DCs to make up a FastPaxos quorum when 1 out of 3 DCs
+%% replicating the metadata is down.  When handling a Get, \name must read the parity 
+%% fragment as well as data fragments to re-construct the entire data object.
+
+
+%% When a datacenter comes back online after crash, it needs to update the
+%% metadata rows in its table service and data fragments in the blob storage.
+%% A number of recovering clients are launched to scan through its objects.
+%% For each object, it issues a normal read request except that it does not
+%% pre-fetch the data. If the local version match the global version, nothing
+%% needs to be done; if the local version is behind, the recovering process
+%% then reads the latest data fragments, re-calcuates the fragment that belongs
+%% to the local datacenter and writes it to the blob storage consistently with
+%% the metadata.
+
+
+%% {\bf Permanent DC Failure}
+%% Data center may fail catastrophically. The blob and table storage service
+%% within the DC may also experience long-term outages. We categorize these all as
+%% permanent DC failure.
+
+%% \name handles permanent DC failure by triggering a DC configuration change 
+%% which replaces the failed DC with a new healthy one. This process is identical 
+%% to that required for the configuration change (Sec~\ref{subsec:config}) except
+%% \name also need to re-generate lost coded fragments instead of simply moving
+%% existing ones.  Furthermore, we prioritize work done to handle permanent DC
+%% failure over that for ordinary DC configuration change.
+
 
 %%% Local Variables:
 %%% mode: latex
