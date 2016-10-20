@@ -86,22 +86,19 @@ versioned object store that erasure codes objects across global data centers.
 %Giza provides an externally consistent (linearizable~\cite{herlihy1990linearizability}) versioned cloud storage service, which erasure codes data objects and stores them across globally distributed data centers.
 
 Customers access Giza by creating Giza storage accounts. For each storage
-account, Giza gives the customers the flexibility to choose the set of data centers
-where their data are striped across.
-In addition, the customers can specify erasure coding scheme. Giza employs classic $n = k + m$
-Reed-Solomon coding, which generates $m$ parity fragments from $k$ data
-fragments. All $n$ fragments are stored in different data centers, where 1)
-failures of up to $m$ arbitrary data centers are tolerated; and 2) data can be
-reconstructed from any $k$ out of the $n$ data centers. By allowing the
-customers to choose the set of data centers and specify the erasure coding scheme,
-Giza gives the customers complete control of storage overhead and durability.
+account, the customers have the flexibility to choose the set of data centers
+where their data are striped across. In addition, they can specify erasure coding scheme.
+Giza employs classic $n = k + m$ Reed-Solomon coding, which generates $m$ parity fragments from $k$ data fragments.
+All coded fragments are stored respectively in $n$ different DCs,
+so as to tolerate up to $m$ arbitrary DC failures.
+%By allowing the customers to choose the set of data centers and specify the erasure coding scheme, Giza gives the customers complete control of storage overhead and durability.
 
 The customers access Giza with straightforward {\em put}, {\em get} and {\em delete} interface. In addition, Giza supports versioning, where new {\em put} does not overwrite existing data, but rather creates a new version of the same data. The old version remains available until it is explicitly deleted.
 
 Giza operates on top of existing cloud storage systems. It stores data
 objects in cloud blob storage and the metadata of the objects in cloud table
 storage. Figure~\ref{fig:giza_example} illustrates an exemplary flow of storing
-an object in Giza.
+an object in Giza with 2 + 1 erasure coding.
 %Giza operates a number of {\em stateless} Giza nodes in every data center. Say a customer uses a Giza client (command line, library, or REST interface) to store a 4MB data object. The Giza client routes the {\em put} request to one of the Giza nodes in the data center closest to the customer.
 Giza divides the object into two data fragments ($a$ and $b$) and encodes them to a parity fragment $p$.
 The fragments are stored respectively in the blob storage in three data centers. The metadata, consisting of the pointers to the
@@ -116,7 +113,7 @@ Detailed characteristics of such services are presented in Section~\ref{sec:moti
 and summarized here:
 1) large storage space consumption,
 2) cold data, where a tiny percentage of objects are accessed
-beyond certain period after creation,
+beyond a short period after creation,
 3) objects may be updated over time, but concurrent updates of the same
 object are rare (albeit possible).
 
@@ -125,28 +122,27 @@ single writer and multiple readers. Giza strives to {\em make the common case
   fast}. In fact, the most optimized version of Giza achieves optimal latency,
 which is single cross-DC round trip for both {\em put} and {\em get}.
 
-On the other hand, Giza properly handles the rare case,
-where concurrent updates to the same object {\em do} occur.
+On the other hand, Giza handles the rare case properly,
+when concurrent updates to the same object {\em do} occur.
 %For instance, Giza tolerates data center failure. In the
 %event of a data center being temporarily unavailable (or simply slow), the
 %customers are able to continue to read and write data objects without much
 %impact. The unavailable (or slow) data center may miss updates, which could
 %potentially lead to conflict when they receive new updates again.
-For instance,
-the retry of a {\em put} could be processed by a different server (or even DC)
-and results in conflict with the previously unfinished {\em put}.
+%For instance,
+%the retry of a {\em put} could be processed by a different server (or even DC)
+%and results in conflict with the previously unfinished {\em put}.
 Even though concurrency is rare,
 it is crucial for Giza to {\em guarantee the rare case correct}.
-Indeed, Giza provides external consistency (linearizability).
+Indeed, Giza provides external consistency.
 
 Giza operates on top of existing cloud storage systems. 
-%It stores data in cloud blob storage and metadata in cloud table storage across multiple data centers.
 The blob and table storage within individual data centers operate independently.
 Hence, while strongly consistent individually, the collection of the blob and
 table storage across multiple data centers do not readily offer the desired
-linearizability. The key technical challenge Giza addresses is how to achieve
-optimal {\em put} with single writer, while at the same time provide
-linearizability under concurrency, over the collection of individual blob and
+external consistency. The key technical challenge Giza addresses is how to achieve
+optimal latency with single {\em put}, while at the same time provide
+external consistency under concurrency, over the collection of individual blob and
 table storage across multiple data centers.
 
 Towards this end, the paper makes the following contributions:
