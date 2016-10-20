@@ -32,25 +32,28 @@ Although extremely rare, data center may fail catastrophically. The blob and
 table storage service within the DC may also experience long-term outages. We
 categorize these all as permanent DC failure. 
 
-\name handles permanent DC failure by replacing the failed replaces the failed
-DC with a new healthy one. Many failure recovery coordinators are launched to
-reconstruct the data fragments and re-insert the metadata row. This procedure is
-similar to how it handles transient failures yet may last much longer (weeks)
-because it needs to recover all objects. This is acceptable considering
-permanent data center failure happens rarely, perhaps only once in decades.
+%\name handles permanent DC failure by replacing the failed
+%DC with a healthy new one. Many failure recovery coordinators are launched to
+%reconstruct the data fragments and re-insert the metadata row. This procedure is
+%similar to how it handles transient failures yet may last much longer (weeks)
+%because it needs to recover all objects. This is acceptable considering
+%permanent data center failure happens rarely, perhaps only once in decades.
+%
+%To ensure all \name nodes will read and write through the new DC instead of the
+%old ones, we have a reliable DNS service storing the mapping from data center
+%ids to actual ip addresses. Each \name node maintains a {\em lease} with the DNS
+%service. The lease usually lasts for a time period, e.g. 30 minutes. Before the
+%lease expires the node will renew the lease by refreshing its local DNS cache.
+%During permanent DC failure recovery, we first update the mapping in the DNS
+%service, then wait for a long enough time (e.g. $>$30 minutes) to make sure all
+%giza nodes have the new mappings. The replicated DNS service already exists in
+%many proprietary systems (e.g. Chubby~\cite{chubby:osdi06}) and has many open-source
+%alternatives (e.g. ZooKeeper~\cite{zookeeper:atc10}) thus does not bring extra 
+%implementation overhead to \name.
 
-To ensure all \name nodes will read and write through the new DC instead of the
-old ones, we have a reliable DNS service storing the mapping from data center
-ids to actual ip addresses. Each \name node maintains a {\em lease} with the DNS
-service. The lease usually lasts for a time period, e.g. 30 minutes. Before the
-lease expires the node will renew the lease by refreshing its local DNS cache.
-During permanent DC failure recovery, we first update the mapping in the DNS
-service, then wait for a long enough time (e.g. $>$30 minutes) to make sure all
-giza nodes have the new mappings. The replicated DNS service already exists in
-many proprietary systems (e.g. Chubby~\cite{chubby:osdi06}) and has many open-source
-alternatives (e.g. ZooKeeper~\cite{zookeeper:atc10}) thus does not bring extra 
-implementation overhead to \name.
+\name handles permanent DC failure by employing logical DC names in storage account. The mapping between a logical DC name to a physical DC location is stored in a separate service external to \name. Upon a permanent DC failure, the same logical DC name is re-mapped from the failed DC to a healthy new one. Giza metadata records logical DC names and therefore remains unchanged after the re-mapping. This is similar to DNS, where same domain name can be re-mapped to a different physical IP address. This way of handling failure is also reported in Chubby~\cite{chubby:osdi06}.
 
+Upon the permanent DC failure, \name launches recovery coordinators to reconstruct the missing fragments and re-insert the metadata rows in the replacement DC. The procedure is similar to how \name handles transient failures yet may last much longer. This is perfectly acceptable considering permanent DC failure is uncommon after all.
 
 %% \section{Replica Configuration Failure Recovery}
 
