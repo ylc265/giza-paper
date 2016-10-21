@@ -45,7 +45,6 @@ traffic, cross-DC erasure coding has not seen wide deployment yet.
 %\caption{Cross-DC bandwidth cost reducing by orders of magnitude.}
 %\label{tab:mears}
 %\end{table}
-
 Fortunately, technological breakthroughs in wide area networking have dramatically reduced cross-DC bandwidth cost.
 There are two key driving forces. 1) The erbium-doped fiber
 amplifiers~\cite{mears1986low} make it practical to amplify a huge spectrum of
@@ -58,8 +57,8 @@ strands and will come online in 2017 with 160 Tbps capacity~\cite{bib:MAREA1, bi
 In comparison, a transatlantic cable dated back in 2001 cost 1.1 billion dollars,
 but had a mere capacity of 10 Gbps~\cite{bib:FA-1}.
 Hence, MAREA represents over 10,000$\times$ bandwidth increase in less than two decades.
-While the cost of MAREA remains undisclosed, it suffices
-to say that cross-DC bandwidth cost has reduced by several orders of magnitude.
+%While the cost of MAREA remains undisclosed, it suffices
+%to say that cross-DC bandwidth cost has reduced by several orders of magnitude.
 The significant cost reduction in cross-DC bandwidth is now
 making cross-DC erasure coding economically attractive.
 
@@ -78,7 +77,7 @@ making cross-DC erasure coding economically attractive.
 
 Giza exploits the reduction in cross-DC bandwidth cost
 and leverages erasure coding to optimize the total cost of storing customer data in the cloud.
-It offers an externally consistent (linearizable~\cite{herlihy90linearizability}),
+It offers an externally strong consistent (linearizable~\cite{herlihy90linearizability}),
 versioned object store that erasure codes objects across global data centers.
 Customers access Giza by creating Giza storage accounts. For each storage
 account, the customers have the flexibility to choose the set of data centers
