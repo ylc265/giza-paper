@@ -55,7 +55,9 @@ with Giza
 %\caption{Giza with Caching in Local DC.}
 \label{tab:caching}
 \end{table}
-{\bf Writes Dominate with Caching:} The above table presents the effectiveness of caching. The ratio between the total amount of bytes reads to writes is 2.3$\times$. This implies that on average each object is read 2.3 times. As illustrated in Section~\ref{sec:alternative}, Giza incurs 1x and 0.5x cross-DC network traffic in writes and reads, respectively. Hence, the ratio between cross-DC traffic due to reads and writes is $1.15\times$. Given the temperature analysis, it is most effective for Giza to additionally cache entire objects for a short period of time within one single DC. Serving reads from the caching DC dramatically reduces the cross-DC traffic due to reads. Indeed, when objects are cached for one day, the cross-DC traffic attribute to reads vs writes reduces to 0.61$\times$. When objects are cached for one month, the ratio reduces to negligible 0.05$\times$, where the cross-DC traffic is completely dominated by writes.
+{\bf Writes Dominate with Caching:} The above table presents the effectiveness of caching. The ratio between the total amount of bytes reads to writes is 2.3$\times$. 
+%This implies that on average each object is read 2.3 times. 
+As illustrated in Section~\ref{sec:alternative}, Giza incurs 1x and 0.5x cross-DC network traffic in writes and reads, respectively. Hence, the ratio between cross-DC traffic due to reads and writes is $1.15\times$. Given the temperature analysis, it is most effective for Giza to additionally cache  objects for a short period of time within one single DC. Serving reads from the caching DC dramatically reduces the cross-DC traffic due to reads. Indeed, when objects are cached for one day, the cross-DC traffic attribute to reads vs writes reduces to 0.61$\times$. When objects are cached for one month, the ratio reduces to negligible 0.05$\times$, where the cross-DC traffic is completely dominated by writes.
 
 \begin{table}[h]
 \footnotesize
@@ -67,7 +69,7 @@ Percentage			& $57.96\%$	& $40.88\%$	& $1.16\%$
 \end{tabular}
 \label{tab:version}
 \end{table}
-{\bf Concurrency is Rare, but Versioning is Required:} The above table presents how often objects are updated and require versioning support. We observe that $57.96\%$ of the objects are written once and never updated during the three-month period. For the remaining, $40.88\%$ of the objects are updated exactly once and merely $1.16\%$ are updated more than twice. This suggests that concurrent updates of objects are rare in Giza (albeit possible). Hence, Giza focuses and optimizes for single writer, while at the same time supports versioning.
+{\bf Concurrency is Rare, but Versioning is Required:} The above table presents how often objects are updated and require versioning support. We observe that $57.96\%$ of the objects are written once and never updated during the three-month period. For the remaining, $40.88\%$ of the objects are updated exactly once and merely $1.16\%$ are updated more than twice. This suggests that concurrent updates of objects are rare in Giza (albeit possible). Hence, Giza focuses and optimizes for single writer, while at the same time supports versioning. 
 
 %\subsection{Giza: Flexible Cross-DC erasure coding }
 %
