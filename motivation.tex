@@ -142,9 +142,7 @@ With $k+1$ erasure coding, where $k$ ranges from 2 to 6, Giza reduces the storag
 The storage cost savings come with inflated cross-DC traffic, which is examined next.
 
 {\bf Cross-DC Traffic:} For writes, Giza does {\em not} incur more cross-DC traffic than geo-replication. Objects are uploaded to any DC and processed by Giza in the DC. With $k+1$ erasure coding, the objects are divided into $k$ data fragments, where one fragment is stored in the DC locally and the rest $k$ fragments are stored in remote DCs. Hence, the ratio between cross-DC traffic and object size is $k/k = 1$, same as geo-replication.
-
 For reads, however, Giza incurs additional cross-DC traffic. $k$ fragments are required to serve reads, where one is from the DC locally and the rest $k-1$ from remote DCs. Hence, the ratio between cross-DC traffic and object size is $(k-1)/k$, which increases with $k$. In comparison, geo-replication serves reads entirely from the DC locally and incurs no cross-DC traffic at all.
-
 Upon data center failure, data originally stored at the failed DC needs to be rebuilt at a new DC. Geo-replication simply replicates every object and thus incurs 1x of cross-DC traffic. In contrast, Giza relies on erasure decoding to reconstruct missing fragments, each incurring $k$ times cross-DC traffic.
 
 {\bf Alternative Approach:} Giza stripes individual objects across multiple DCs. This design leads to cross-DC traffic when serving reads. A possible alternative is to first aggregate objects into large logical volumes (say 100GB) and then erasure code different volumes across multiple DCs to generate parity volumes. Since every object is stored in its entirety in one of the DCs, cross-DC traffic is avoided during reads.
