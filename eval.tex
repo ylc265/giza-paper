@@ -1,40 +1,44 @@
 \section{Evaluation}
 
-\comment{
-
-Giza provides fault tolerance through erasure coding across wide area networks while providing strong consistency for its read and write operations. There is currently no system that is specifically designed to serve as an alternative to Giza. As such, we benchmark Giza’s performance against Cassandra and CockroachDB to illustrate the following points:
-
-- In the common case, Giza’s Fast Paxos implementation of the metadata phase allows for lower latency writes for Giza when compared to Cassandra.
-
-- While one could implement Giza’s metadata phase and data phase as a single distributed transaction, we illustrate through CockroachDB that doing so will degrade performance significantly.
-
-In addition, we provide evaluation results for encoding scheme ranging from 2-1 in 3 data centers to 18-4 in 22 data centers to illustrate the flexibility of Giza as a front end.
-
-}
-
-For evaluation, we deploy Giza on top of the Microsoft Azure platform across 11 data centers (7 in North America, 2 in Europe and 2 in Asia). For each data center, we deploy virtual machines as Giza nodes. As describe in Section~\ref{sec:design}, all the Giza nodes are stateless. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
-
-%In each data center, we create a single virtual machines as a Giza node. We also create a number of Azure storage accounts. These storage accounts are local to individual DCs and allow access to Azure Blob storage and Azure Table storage in the DCs.
-
-%We form \name storage account as a collection of the local Azure storage accounts. We also specify the erasure coding scheme for each account. For example, a North American only Giza storage account may apply $2+1$ erasure coding and consist of 4 data centers in the US, as xxx, xxx, xxx and xxx. A global Giza storage account may apply same coding and consist of 4 data centers across 3 continents, as xxx, xxx, xxx and xxx.
-
-%As described in section~\ref{sec:design}, all the Giza nodes are stateless. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
+For evaluation, we deploy Giza on top of the Microsoft Azure platform across 11 data centers (7 in North America, 2 in Europe and 2 in Asia). Giza nodes are Azure virtual machines with 16 cores, 56 GB of RAM, and Gigabit Ethernet. As describe in Section~\ref{sec:design}, all the Giza nodes are stateless. For each Giza storage account, a locally redundant Azure Blob and Table storage account is created in every DC. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
 
 \input{exp-setup}
 
-\subsection{Metadata Path Optimization}
-When comparing the performance between implementing the metadata path with Fast Paxos and Classic Paxos, we found two factors that are important in determining which configuration outperforms the other.  The first factor is whether the VM to local Azure write latency is dominant in the metadata path and the second factor is the difference in the maximal distance between data centers in a fast quorum and a classic quorum. 
+\subsection{Metadata Latency}
 
-The performance of the metadata path is primarily determined by the request latency between the coordinator and the table storage of the furthest data center in the quorum. Each request to a remote table storage is broken down into two parts: VM to VM latency and VM to local Azure storage latency. From our previous analysis, the write latency from a VM to its local Azure storage is around 60 ms. The VM to VM latency is determined by the location of the data centers and can range from 20 ms (us central to us south central) to 240 ms (east Japan to north Europe). Figure~\ref{fig:metadata} illustrates the latency difference between the two Paxos schemes. The metadata path latency is broken down into three parts: query version latency, the table access latency, and the transfer latency. The query version latency, a simple read from the proposer’s local table to determine the possible highest version, is not part of the consensus protocol and is the same for both Fast and Classic Paxos. The table access latency is the local table access latency of the VM that is furthest away from the coordinator in the quorum. Since Classical Paxos requires two rounds and hence two table accesses, the Classic Paxos table access latency is consistently around twice the latency of the Fast Paxos table access. The transfer latency is the amount of time spent on network communication between the coordinator and the furthest VM in the quorum. Here the latency of the Classic Paxos, which incurs two round trip, is not strictly twice as much as the latency of the Fast Paxos. This is because the Classic quorum size is smaller than the Fast quorum size.
+Giza implements both Classic and Fast Paxos for its metadata path. Here, we compare the performance of the two algorithms and examine their effects on Giza metadata latency. Figure~\ref{fig:metadata} presents the metadata latencies and breakdowns for both US-2-1 and World-2-1 configurations. The results include running proposers in each of the DCs.
 
-In the top row of figure, we see that when the VM to local Azure storage latency dominates the metadata latency (in the case of the 2-1 US configuration), the latency of Fast Paxos metadata path is lower than that of the Classic Paxos metadata path no matter which region you start the request from. In addition, if the max distance between the data centers in a fast quorum is close to that in a classic quorum, the latency of the Fast Paxos metadata path is half of that of the Classic Paxos metadata path. In certain scenarios, it is possible for Classic Paxos to achieve lower latency than Fast Paxos. While we didn’t observe this in our two configurations, we see that if we start the request from North Europe in the 2-1 world configuration, the latencies are almost the same. This is because a Fast Paxos round requires a bigger quorum response and in this case, a fast quorum consists of North Europe, US, and East Japan. The VM to VM latency between North Europe and East Japan is 240 ms while the VM to VM latency between North Europe and US is only 102 ms. Hence the max distance between data centers in the classic quorum (US and North Europe) is less than half of that of the fast quorum. The scenario in which the Classic Paxos scheme outperforms the Fast Paxos scheme is:
-\[max\_dist(F) > 2 * max\_dist(Q) + \textrm{extra table access}
-\]
-where F is the fast quorum size and Q is the classic quorum size.
-\input{fig_metadata}
+The metadata latency consists of three parts: query version latency, transfer latency and table latency.
+The query version latency, a simple read from the proposer’s local table to determine the possible highest version, is not part of the consensus protocol and is the same for both Classic and Fast Paxos.
+The transfer latency is the amount of time spent on network communication between the proposer and the furthest Giza proxy in a Paxos quorum. Here, the latency of Classic Paxos, which incurs two cross-DC round trips, is not strictly twice as much as the latency of Fast Paxos. This is because the quorum of Classic Paxos is smaller than that of Fast Paxos, which results in the {\em furthest} Giza proxy being closer in Class Paxos.
+The table latency is the latency for a Giza proxy to conditionally update its local DC table. Since Classic Paxos requires two rounds and hence two table updates, its table latency is consistently around twice that of Fast Paxos.
+
+%The metadata latency is first affected by the number of cross-DC round trips the Paxos algorithms require. Classic Paxos takes 2 cross-DC round trips and Fast Paxos only 1 round trip. The latency of single round trip consists of two parts: 1) transfer latency, which is the latency to relay the metadata request to a proxy Giza node in a remote DC; and 2) table latency, which is the latency to conditionally update the table locally in the remote DC.
+
+%It turns out that the table latencies across various DCs are quite comparable, around 60 ms or so.
+%The transfer latencies, however, vary significantly from 20 ms (US central to US south central) to 240 ms (east Japan to north Europe).
+%
+%The metadata latency is further affected by quorum size. Classic Paxos completes with 2 out of 3 
+%
+%Indeed, Figure~\ref{fig:metadata} presents the metadata latencies and breakdowns for the both US-2-1 and World-2-1 configurations.
+
+%When comparing the performance between implementing the metadata path with Fast Paxos and Classic Paxos, we found two factors that are important in determining which configuration outperforms the other.  The first factor is whether the VM to local Azure write latency is dominant in the metadata path and the second factor is the difference in the maximal distance between data centers in a fast quorum and a classic quorum. 
+%
+%The performance of the metadata path is primarily determined by the request latency between the coordinator and the table storage of the furthest data center in the quorum. Each request to a remote table storage is broken down into two parts: VM to VM latency and VM to local Azure storage latency. From our previous analysis, the write latency from a VM to its local Azure storage is around 60 ms. The VM to VM latency is determined by the location of the data centers and can range from 20 ms (us central to us south central) to 240 ms (east Japan to north Europe). Figure~\ref{fig:metadata} illustrates the latency difference between the two Paxos schemes.
+
+For the US-2-1 configuration, we observe that the metadata latency is dominated by table latency. In this case, Fast Paxos is much faster than Classic Paxos, regardless of the proposer locations.
+
+For the World-2-1 configuration, transfer latency becomes a substantial part of the overall metadata latency. In this case, despite of taking two cross-DC round trips, the smaller quorum of Classic Paxos sometimes leads to lower transfer latency than Fast Paxos. Nevertheless, the table latency of Classic Paxos is still around twice that of Fast Paxos. In the end, Fast Paxos turns out still faster than Classic Paxos, regardless of the proposer locations.
+
+%In addition, if the max distance between the data centers in a fast quorum is close to that in a classic quorum, the latency of the Fast Paxos metadata path is half of that of the Classic Paxos metadata path. In certain scenarios, it is possible for Classic Paxos to achieve lower latency than Fast Paxos. While we didn’t observe this in our two configurations, we see that if we start the request from North Europe in the 2-1 world configuration, the latencies are almost the same. This is because a Fast Paxos round requires a bigger quorum response and in this case, a fast quorum consists of North Europe, US, and East Japan. The VM to VM latency between North Europe and East Japan is 240 ms while the VM to VM latency between North Europe and US is only 102 ms. Hence the max distance between data centers in the classic quorum (US and North Europe) is less than half of that of the fast quorum. The scenario in which the Classic Paxos scheme outperforms the Fast Paxos scheme is:
+%\[max\_dist(F) > 2 * max\_dist(Q) + \textrm{extra table access}
+%\]
+%where F is the fast quorum size and Q is the classic quorum size.
+%\input{fig_metadata}
+
 
 \subsection{\name Latency}
-The design of Giza went through multiple iterations and this section illustrates the performance gain in latency for each iteration. Through our workload analysis, we chose to erasure code objects with size larger than 4MB. Hence, we focus on the {\em put} and {\em get} latency of 4MB objects in the evaluation. For the interest of space, we chose the 2-1-World configuration where US Central generates all requests as representative of the performance gain seen in other configurations.
+The design of Giza went through multiple iterations and this section illustrates the performance gain in latency for each iteration. For the interest of space, we chose the 2-1-World configuration where US Central generates all requests as representative of the performance gain seen in other configurations.
 
 \subsubsection{Giza Put Latency}
 %\subsubsection{Giza Latency}

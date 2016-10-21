@@ -10,49 +10,17 @@
 %World-6-1 & 6 + 1 & 7 & Central, South Central, West & Central, Europe North, Japan East & 241 ms\\
 US-2-1 	  & 2 + 1 & US(3/3)                   & 46 ms \\
 US-6-1 	  & 6 + 1 & US(7/3)                   & 71 ms\\ 
-World-2-1 & 2 + 1 & US(1/1), EU(1/1), JP(1/1) & 240ms\\
-World-6-1 & 6 + 1 & US(3/1), EU(3/1), JP(1/1) & 241 ms\\
+World-2-1 & 2 + 1 & US(1/1), EU(1/1), JP(1/1) & 240 ms\\
+World-6-1 & 6 + 1 & US(3/1), EU(2/1), JP(2/1) & 241 ms\\
 \end{tabular}
-\caption{Giza Configuration ( US(7/3) represents 7 data DCs and 3 metadata DCs in the US. )} 
+\caption{Giza Configuration ( US(7/3) represents 7 DCs for data and 3 DCs for metadata, all in the US. )} 
 \label{fig:dcconfig} 
 \end{figure}
 
 \subsection{Experimental Setup}
-%For evaluation, we deploy Giza on top of the Microsoft Azure platform across up to 11 data centers (7 in North America, 2 in Europe and 2 in Asia). %As described in section~\ref{sec:design}, all the Giza nodes are stateless. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
-We run experiments using four configurations: 2-1-US, 2-1-World, 6-1-US and 6-1-World. Figure~\ref{fig:dcconfig} describes the data centers participating in each configuration, and the max ping latency between the DCs. 
-Giza nodes are Azure virtual machines with 16 cores, 56 GB of RAM, and gigabit ethernet. For each Giza account, a locally redundant Azure Blob and Table storage account is created in every DC.
+We run experiments using four configurations: 2-1-US, 2-1-World, 6-1-US and 6-1-World. Figure~\ref{fig:dcconfig} describes the data centers participating in each configuration, and the max ping latency between the DCs. Unless explicitly pointed out, all experiments erasure code objects of 4MB, the dominating size in our target workloads.
 
-We also compare Giza with CockroachDB~\cite{cockroachdb}, an open source implementation of Google spanner. Our CockroachDB experiments use the 2-1-US configuration. In every data center, we run three CockroachDB instances, each writing to a dedicated HDD with no memory caching. We have configured the CockroachDB instances following the recommended production setting by the CockroachDB developers. For example, following the recommendation, we run NTP to synchronize clocks of different CockroachDB instances.
-
-%We evaluate the latency performance of Giza and CockroachDB by running 1000 operations (for put and get) during the same timeframe. This is because the latency results obtained at different time throughout the day or week can vary significantly. 
- 
-%For all latency results, we report the 50th percentile. We refrain from using the 95th percentile due to the high variability of the tail distribution observed in public cloud platforms. Since the performance of Giza is determined by the performance of the underlying infrastructures (Azure Table and Azure Storage), we also  provide latency benchmark for Azure’s Table and Blob storages in Figure 5. Figure 5a shows the vm to local azure table latency for all the vms participating in the metadata path. The put and get latency are pretty consistent across vm with the put latency being around 60ms and the get latency being around 10ms. Figure 5b shows the vm to local azure storage latency. Here, the latency varies widely from vm to vm with some latencies being double of others. The storage latencies also increase with the object sizes.
-
-%Our experiments involve a varying number of DCs in different configurations. In
-%each DC, we deploy a single Azure virtual machine (16 cores, 56 GB of RAM, and
-%gigabit ethernet) and create a storage account for accessing Azure blob and
-%table storage. Both the blob and table storage are configured with the
-%``locally redundant'' replication level.  Each \name node accesses the local
-%DC's cloud storage and also proxies the storage requests from \name nodes in
-%other DCs.  
-
-%For CockroachDB experiments, we run a CockroachDB cluster spanning across
-%multiple DCs.  We use the same set of Azure virtual machines and run a single
-%CockroachDB node per DC. Our configuration of CockroachDB follows the
-%recommended production settings by the developers of CockroachDB. For example,
-%we run NTP to synchronize the clocks of different CockroachDB nodes. 
-
-%We generate experimental workloads using the YCSB benchmark. In the generated
-%workload, the probability of accessing a given key follows a Zipf distribution.
-%We experiment with different object sizes ranging from 128KB to 4MB. 
-
-%We experiment with four diffferent DC configurations, as shown in
-%Figure~\ref{fig:dcconfig}.  These configurations correspond to different coding
-%rates and different choices of DCs, either within US-only or spread across the
-%world. The wide-area latency across different DCs plays an important role in 
-%the performance of \name.  Figure~\ref{fig:dcconfig} reports the majority
-%latency (measured as the latency required to get a response from a majority
-%quorum of DCs) and the maximum latency between DCs.
+We also compare Giza with CockroachDB~\cite{cockroachdb}, an open source implementation of Google spanner. Our CockroachDB experiments use the 2-1-US configuration. In every data center, we run three CockroachDB instances for local DC replication. Each CockroachDB writes to a dedicated HDD with no memory caching. We have configured the CockroachDB instances following the recommended production setting by the CockroachDB developers. For example, we run NTP to synchronize clocks of the different CockroachDB instances.
 
 %%% Local Variables:
 %%% mode: latex
