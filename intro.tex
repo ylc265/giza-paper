@@ -149,8 +149,8 @@ Towards this end, the paper makes the following contributions:
       requirement to tolerate data center failure.
     \item Giza provides strong consistency when accessed concurrently, even with data center
       failure.
-    \item Giza employs well-known distributed algorithms, such as Paxos and Fast
-      Paxos, in a novel way so that it operates on top of existing cloud storage
+    \item Giza employs well-known distributed algorithms, such as Paxos~\cite{lamport01paxos}
+      and Fast Paxos~\cite{lamport05fast}, in a novel way so that it operates on top of existing cloud storage
       systems.
     \item Giza is deployed in \deployment. Experimental results demonstrate
       that Giza achieves all our design goals. In particular, it is worth

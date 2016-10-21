@@ -12,7 +12,7 @@ In addition, we provide evaluation results for encoding scheme ranging from 2-1 
 
 }
 
-For evaluation, we deploy Giza on top of the Microsoft Azure platform across up to 11 data centers (7 in North America, 2 in Europe and 2 in Asia). For each data center, we deploy a virtual machine that runs as the Giza node. As describe in section~\ref{sec:design}, all the Giza nodes are stateless. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
+For evaluation, we deploy Giza on top of the Microsoft Azure platform across 11 data centers (7 in North America, 2 in Europe and 2 in Asia). For each data center, we deploy virtual machines as Giza nodes. As describe in Section~\ref{sec:design}, all the Giza nodes are stateless. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
 
 %In each data center, we create a single virtual machines as a Giza node. We also create a number of Azure storage accounts. These storage accounts are local to individual DCs and allow access to Azure Blob storage and Azure Table storage in the DCs.
 

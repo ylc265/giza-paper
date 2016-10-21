@@ -1,10 +1,10 @@
-
 \section{Design}
+\label{sec:design}
 
 This section presents the design of {\name}, including the overall architecture,
 the data model, and the protocols for the {\em put}, {\em get} and {\em delete} operations.
 
-\subsection{Overview and challenges}
+\subsection{Overview and Challenges}
 
 \begin{figure}[tp]
 \centering
@@ -110,20 +110,20 @@ while ensuring data consistency and durability.
 
 % A typical giza architecture for a data center includes the giza nodes, the Azure Blob Storage, and the Azure Table Storage. The giza nodes are the processing units of the Giza architecture and manages the data and the metadata. Furthermore the giza nodes participate in paxos rounds as coordinators. Figure 1 illustrates the architecture of Giza. Giza separates data from metadata and handles them on different paths. The data path is responsible for encoding the data and sending the data fragments across data centers. Each data fragment is stored in the corresponding DC’s Azure Blob Storage. The metadata path is responsible for storing the latest version of the data and the location of its data fragments. Giza uses a variant of the Paxos state machine replication (SMR) to maintain consistency of the metadata where each metadata server maintains a local copy of the replicated log. The replicated log is stored in the Azure Table Storage.
 
-\subsection{Implementing Paxos using Cloud Storage APIs}
+\subsection{Implementing Paxos using Cloud APIs}
 
-On the meta-data path, \name implements a Paxos consensus protocol to serialize the operations on each data object.
+On the meta-data path, \name implements Paxos consensus protocols to serialize the operations on each data object.
 More specifically, it implements Paxos on top of existing cloud tables, such as Azure Table, or AWS DynamoDB.
 
 \subsubsection{Paxos and Fast Paxos: A Brief Primer}
 
-The Paxos algorithm provides a mechanism to reach consensus among a set of {\em acceptors} and one or more {\em proposers}. Each proposer initiates a Paxos voting process by first picking a distinguished {\em ballot}. All ballots are unique and can be compared to each other. The proposer send requests to the acceptors, and associate each request with a proposal value. Each acceptor decides whether to accept a request based on its own state. The proposal value is {\em committed} when it is accepted by a {\em quorum} of the acceptors. The acceptors update their states when a request or value is accepted.
+The Paxos algorithm~\cite{lamport01paxos} provides a mechanism to reach consensus among a set of {\em acceptors} and one or more {\em proposers}. Each proposer initiates a Paxos voting process by first picking a distinguished {\em ballot}. All ballots are unique and can be compared to each other. The proposer sends requests to the acceptors, and associates each request with a proposed value. Each acceptor decides whether to accept a request based on its own state. The proposed value is {\em committed} when it is accepted by a {\em quorum} of the acceptors. The acceptors update their states when a request or value is accepted.
 
 In our implementation, each Giza node is a proposer. The acceptors in Paxos are typically active processors, which are capable of comparing the ballot of an incoming request with its own state and deciding whether to accept the request. In Giza, we implement the acceptors using the cloud table storage. Comparing the ballot and accepting the request is implemented via {\em atomic conditional update} to the table.
 
 Paxos takes two {\em phases} to reach consensus, where {\em phase} $1$ prepares a ballot and {\em phase} $2$ accepts a value. Since each phase takes one round trip, applying Paxos in Giza results in two cross-DC round trips for metadata writes~\footnote{Typical Paxos optimization elects a distinguished leader. The leader executes {\em phase} $1$ in advance and only takes one round trip in {\em phase} $2$ to reach consensus. This, however, requires relaying all updates through the leader. In the cross-DC scenario, it takes one cross-DC round trip to relay updates originating from non-leader DCs. Therefore, these updates still take two cross-DC round trips to commit.}.
 
-Fast Paxos is a version of Paxos designed to optimize the performance over cross-DC acceptors. It employs two types of rounds: fast round and classic round. A fast round sends a PreAccept request and takes a single round trip to reach consensus. A classic round resembles the two phases in Paxos and takes two round trips.
+Fast Paxos~\cite{lamport05fast} is a version of Paxos that optimizes the performance over cross-DC acceptors. It employs two types of rounds: fast round and classic round. A fast round sends a PreAccept request and takes a single round trip to reach consensus. A classic round resembles the two phases in Paxos and takes two round trips.
 The fast round in Fast Paxos demands a larger quorum than that in Paxos. Consider a case with $3$ acceptors. Paxos is able to reach consensus with 2 out of the 3 acceptors (quorum size of 2). In comparison, Fast Paxos only reaches consensus with all the 3 acceptors (quorum size of 3).
 
 In Giza, the success of the data path requires multiple data centers to be online to make progress, it turns out easy to satisfy the demand of a larger quorum, and suites the implementation need in Fast Paxos. E.g., Giza requires at least 3 data centers to stripe the coded fragments (with $2 + 1$ erasure coding). Hence, the data path won't succeed unless there are at least 3 data centers available, which makes it easy to satisfy the larger quorum requirement.

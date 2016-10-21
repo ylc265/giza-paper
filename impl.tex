@@ -7,7 +7,7 @@ of data centers across different geographical regions. This allows for experimen
 with a wider range of coding schemes. Giza is designed to be invariant to the 
 underlying cloud services and could also use Amazon's S3 and DynamoDB. 
 %We implemented the Azure storage and table interface using the official Azure Storage Client Library for C++ (2.4.0). 
-We use the Jerasure and GF-Complete~\cite{Jerasure} as our erasure code libraries.
+%We use the Jerasure and GF-Complete~\cite{Jerasure} as our erasure code libraries.
 %However, Giza allows the flexibility for using different coding schemes as well.
 
 %{\bf Implementing conditional write.}
@@ -25,8 +25,8 @@ request, which happens if another \name node has concurrently written to the row
 Performing conditional write using ETags 
 incurs an extra cross-DC roundtrip to read the row from a remote table.
 To optimize the latency, we allow a \name node to \emph{delegate} its 
-conditional write request to a remote table $T$ through another node which
-resides in the same DC as the underlying table $T$.  
+conditional write request to a remote table through another node 
+residing in the same DC as the table.
 
 In our implementation, \name nodes in one datacenter also serve as proxies for
 other nodes in other datacenters during blob storage accesses.  Proxying for
