@@ -20,7 +20,7 @@ World-6-1 & 6 + 1 & US(3/1), EU(3/1), JP(1/1) & 241 ms\\
 We run experiments using four configurations: 2-1-US, 2-1-World, 6-1-US and 6-1-World. Figure~\ref{fig:dcconfig} describes the data centers participating in each configuration, and the max ping latency between the DCs. 
 Giza nodes are Azure virtual machines with 16 cores, 56 GB of RAM, and gigabit ethernet. For each Giza account, a locally redundant Azure Blob and Table storage account is created in every DC.
 
-We also compare Giza with CockroachDB~\cite{XXX}, an open source implementation of Google spanner. Our CockroachDB experiments use the 2-1-US configuration. In every data center, we run three CockroachDB instances, each writing to a dedicated HDD with no memory caching. We have configured the CockroachDB instances following the recommended production setting by the CockroachDB developers. For example, following the recommendation, we run NTP to synchronize clocks of different CockroachDB instances.
+We also compare Giza with CockroachDB~\cite{cockroachdb}, an open source implementation of Google spanner. Our CockroachDB experiments use the 2-1-US configuration. In every data center, we run three CockroachDB instances, each writing to a dedicated HDD with no memory caching. We have configured the CockroachDB instances following the recommended production setting by the CockroachDB developers. For example, following the recommendation, we run NTP to synchronize clocks of different CockroachDB instances.
 
 %We evaluate the latency performance of Giza and CockroachDB by running 1000 operations (for put and get) during the same timeframe. This is because the latency results obtained at different time throughout the day or week can vary significantly. 
  
