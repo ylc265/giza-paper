@@ -30,24 +30,26 @@ fundamentally untrusted infrastructure. To achieve strong consistency,
 OceanStore serializes updates via a primary tier of replicas, a generalized form
 of primary. These primary replicas cooperate through a Byzantine agreement
 protocol to choose the final commit order for the updates. 
-HAIL~\cite{hail:ccs09}, RACS~\cite{racs:socc10} and
+HAIL~\cite{hail:ccs09}, RACS~\cite{racs:socc10}, DepSky~\cite{depsky:eurosys11} and
 NCCloud~\cite{nccloud:fast12} all stripe and erasure code data across multiple
-cloud storage providers. HAIL applies error correction coding within individual
-providers and erasure coding across them. It is designed to withstand Byzantine
-adversaries and unifies proofs of retrievability and failure recovery. 
-In comparison, Giza operates in a trusted environment and employs a leaderless
-consensus protocol. Updates may originate from arbitrary data centers and still
-complete with optimal latency. There is no need to relay all the updates through
-the primaries. Giza also exploits the trade-off among storage cost, network
-bandwidth and durability.
+cloud storage providers. HAIL~\cite{hail:ccs09} applies error correction coding
+within individual providers and erasure coding across them. It is designed to
+withstand Byzantine adversaries and unifies proofs of retrievability and failure
+recovery. In comparison, Giza operates in a trusted environment and employs a
+leaderless consensus protocol. Updates may originate from arbitrary data centers
+and still complete with optimal latency. There is no need to relay all the
+updates through the primaries. Giza also exploits the trade-off among storage
+cost, network bandwidth and durability.
 
-RACS builds a working system that is compatible with existing cloud storage
-clients and able to use multiple storage providers as back-ends.
-It addresses the conflict caused by concurrent writers using Apache
+RACS~\cite{racs:socc10} builds a working system that is compatible with existing
+cloud storage clients and able to use multiple storage providers as back-ends.
+DepSky~\cite{depsky:eurosys11} presents an enhanced scheme by employing an
+secret sharing scheme that provides confidentiality guarantee. Both of the
+systems address the conflict caused by concurrent writers using Apache
 ZooKeeper~\cite{zookeeper:atc10}, where readers-writer locks are implemented at
 per-key granularity to synchronize distributed RACS proxies. Giza, on the other
 hand, implements consensus algorithms for individual keys and achieves strong
-consistency without centralized coordinators.
+consistency without centralized coordinators. 
 
 NCCloud~\cite{nccloud:fast12} implements a class of functional regenerating
 codes~\cite{dimakis07networkcoding} that optimize cross-WAN repair bandwidth
