@@ -39,7 +39,8 @@ For the World-2-1 configuration, transfer latency becomes a substantial part of 
 
 \subsection{\name Latency}
 
-The design of Giza went through multiple iterations and this section illustrates the performance gain in latency for each iteration. For the interest of space, we focus on the 2-1-World configuration where US Central generates all requests as representative of the performance gain seen in other configurations.
+The design of Giza went through multiple iterations and this section illustrates the performance gain in latency for each iteration. For the interest of space, we focus on the 2-1-World configuration.
+%where US Central generates all requests as representative of the performance gain seen in other configurations.
 
 \subsubsection{Giza Put Latency}
 %\subsubsection{Giza Latency}
@@ -54,7 +55,7 @@ higher than the baseline. This is due to the latency of erasure coding 4mb data.
 
 \subsubsection{Giza Get Latency}
 
-Similar to the put test, we did a \name get test, as shown in Figure~\ref{fig:eval_giza_get}. The alternative design here is the non-optimistic {\em get } where the most current version for a blob is not assumed to be stored in the current data center. Hence, the metadata path and data path are executed sequentially. We see the performance gain from the pessimistic version with a median latency 419 ms to the optimistic version's 223 ms. Giza's get latency is higher than the baseline by 33 ms. The gap between \name and baseline is higher because in the get operation \name needs to do a local table retrieve first before starting the datapath. In addition, it needs to decode the data fragments. Here the latency cost of erasure encoding on the read path with Giza is roughly twice that of reading from a locally redundant Azure storage.
+Similar to the put test, we did a \name get test, as shown in Figure~\ref{fig:eval_giza_get}. The alternative design here is the non-optimistic {\em get } where the most current version for a blob is not assumed to be stored in the current data center. Hence, the metadata path and data path are executed sequentially. We see the performance gain from the pessimistic version with a median latency 419 ms to the optimistic version's 223 ms. Giza's get latency is higher than the baseline by 33 ms. The gap between \name and baseline is higher because in the get operation \name needs to do a local table retrieval first before starting the datapath. In addition, it needs to decode the data fragments. Here the latency cost of erasure encoding on the read path with Giza is roughly twice that of reading from a locally redundant Azure storage.
 
 %The results are expected. The \name put latency consists of a 
 %metadata put latency and datapath latency. 
@@ -80,7 +81,7 @@ Similar to the put test, we did a \name get test, as shown in Figure~\ref{fig:ev
 
 \input{fig_four}
 
-\name offers customers the flexibility to choose the set of data centers, as well as the erasure coding schemes. As the main goal of Giza is storage cost reduction, we want to encourage erasure encoding with more numbers of data fragments. Because Giza’s latency performance is determined by the max of the data path and the metadata path and data path is most often the dominant latency, erasure coding with higher number of data fragments can actually improve latency performance. This is because more data fragments means that less bytes are sent to each storage, reducing the overall data path latency. Figure~\ref{fig:eval_giza_put_four} and  Figure~\ref{fig:eval_giza_get_four} illustrate this in our four configurations with 4MB data, with all requests generated from US-Central. This improvement of performance with higher configurations occurs when the max distance between the data centers in the higher configuration group (7 data centers) is not more than the max distance between the data centers in the lower configuration group (3 data centers).
+\name offers customers the flexibility to choose the set of data centers, as well as the erasure coding schemes. As the main goal of Giza is storage cost reduction, we want to encourage erasure encoding with more numbers of data fragments. Giza’s operation latency is determined by the max of the data path and the metadata path.  Since the data path is more often the dominant latency, erasure coding with higher number of data fragments can actually improve latency performance. This is because more data fragments means that less bytes are sent to each storage, reducing the overall data path latency. Figure~\ref{fig:eval_giza_put_four} and  Figure~\ref{fig:eval_giza_get_four} illustrate this in our four configurations with 4MB data, with all requests generated from US-Central. This improvement of performance with higher configurations occurs when the max distance between the data centers in the higher configuration group (7 data centers) is not more than the max distance between the data centers in the lower configuration group (3 data centers).
 
 
 \subsection{Comparing Giza with CockroachDB}
