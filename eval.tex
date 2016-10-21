@@ -103,7 +103,7 @@ The implementation of Giza get as transactions consists of reading the metadata 
 
 Giza is optimized for low contention workloads. So, it employs a simple strategy for handling contention. In the event of contention, a Giza node that fails the fast round immediately switches to a classic round. In addition, Giza implements exponential back-off with the latency starting from the median cross-DC latency whenever prepare phase or accept phase further fails in the classic round.
 
-Figure~\ref{fig:gizacontentionbar} compares the performance of Giza driven by the cloud drive traces to that with no contention at all. In the cloud drive trace, we observe that only 0.5\% of updates are concurrent (within 1 second interval). Hence, it is not surprise that the performance of Giza driven by the traces is almost identical to that with no contention.
+Figure~\ref{fig:gizacontentionbar} compares the performance of Giza driven by the cloud drive traces to that with no contention at all. In the cloud drive trace, we observe that only $0.5\%$ of updates are concurrent (within 1 second interval). Hence, it is not surprise that the performance of Giza driven by the traces is almost identical to that with no contention.
 
 Figure~\ref{fig:gizacontentionbar} also presents the latency results of adversary contention. In this case, two Giza nodes within the same data center are issuing back-to-back concurrent puts to update the same object. This is definitely not the scenario Giza targets. We include the results for the interest of our readers.
 
