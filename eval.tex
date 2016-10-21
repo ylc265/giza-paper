@@ -2,7 +2,7 @@
 
 \comment{
 
-Giza provides fault tolerance through erasure coding across wide area networks while providing strong consistency for its read and write operations. As such, there are currently no system that is specifically designed to serve as an alternative to Giza. However, we benchmark Giza’s performance against Cassandra and CockroachDB to illustrate the following points:
+Giza provides fault tolerance through erasure coding across wide area networks while providing strong consistency for its read and write operations. There is currently no system that is specifically designed to serve as an alternative to Giza. As such, we benchmark Giza’s performance against Cassandra and CockroachDB to illustrate the following points:
 
 - In the common case, Giza’s Fast Paxos implementation of the metadata phase allows for lower latency writes for Giza when compared to Cassandra.
 
@@ -96,7 +96,7 @@ We evaluate the latency performance of Giza’s metadata path under contention w
 
 In most cases, both the fast rounds fail. In this scenario, one of the the Giza node will fail either at the prepare phase or the accept phase. In the former case, the expected latency is 6 RTT: Fast round -> Prepare Phase -> Back off -> Prepare Phase -> Accept Phase -> Fast Round.In the latter case, the expected latency is 7 RTT: Fast Round -> Prepare Phase -> Accept Phase -> Back off -> Prepare Phase -> Accept Phase -> Fast Round. This is consistent with the median contention latency.
 
-It is important to note that while Giza is correct under contention, it is not optimized for contention. This is because Giza is designed to handle real life workload with little to no contentions. For example, from our One Drive analysis, only 0.5\% of the total updates are concurrent. Figure~\ref{fig:gizacontentioncdf}  compares the estimated latency cdf of Giza under a no-contention workload with workload driven by our One Drive analysis. 
+It is important to note that while Giza is correct under contention, it is not optimized for contention. This is because Giza is designed to handle real life workload with little to no contentions. From Section~\ref{sec:motivation}, we observe that only 0.5\% of Giza's updates are concurrent (within 1 seconds). Figure~\ref{fig:gizacontentioncdf}  compares the estimated latency cdf of Giza under a no-contention workload with workload driven by Section~\ref{sec:motivation}. 
 
 %We evaluate the latency performance of Giza’s metadata path under contention with our 2-1-US configuration. From our One Drive analysis, only 0.5\% of all updates happen concurrently. To simulate this workload, we run 1000 metadata put where 0.5\% of puts are concurrent puts from two Giza nodes. All requests are from the same data center (US Central). Figure~\ref{fig:gizacontentioncdf} shows the cdf of running Giza with One Drive’s workload distribution when compared with workload with no contentions. Since only a small number of puts are concurrent, the cdf of the contention workload follows the same curve as that of the no contention workload until 95\%. 
 
