@@ -61,7 +61,7 @@ normal workload.
 Facebook f4~\cite{f4:osdi14} is a production warm blob storage system, storing
 over 65PBs of logical data. It applies erasure coding across data centers and
 reduces effective-replication-factor from 3.6 to 2.1. It adopts an erasure
-coding approach as discussed in Section.~\cite{sec:alternative}, but avoids the
+coding approach as discussed in Section~\ref{sec:alternative}, but avoids the
 deletion challenge by never deleting data objects. In f4, every data object is
 encrypted with a unique key. Whenever a data object in a volume needs to be
 deleted, its unique key is destroyed while the encrypted data object remains in
