@@ -81,7 +81,7 @@ Deleting a specific version is processed as a special update of the object's met
 \name executes the Paxos algorithm to write a garbage collection record containing
 the version $v$; any version $v'\leq v$ will be garbage collected.  
 
-Giza garbage collects and reclaims the storage spaced occupied by the coded fragments of the deleted version.
+Giza garbage collects and reclaims the storage space occupied by the coded fragments of the deleted version.
 \comment{
 Because {\name} keeps writing new version metadata to table service and data fragments
 to blob storage service, it needs to garbage collect on outdated versions to recycle
@@ -113,9 +113,9 @@ as this could result in conflict and ambiguity during future failure recovery.
 % start with an initial version, which could violate some of the metadata (with a higher version before the deletion) if the removing is still in process.
 Therefore, {\name} resorts to two-phase commit to delete the metadata table row.
 In the first phase, it marks the rows in all the data centers as ``prepared\_to\_delete''.
-After this any other {\em get} or {\em put} operations are temporarily disabled on this object.
+After this any other {\em get} or {\em put} operations are temporarily disabled for this object.
 Then in the second phase, all the rows are actually removed from the table storage.
-The disadvantage of this approach is that it requires all the data centers online.
+The disadvantage of this approach is that it requires all the data centers to be online.
 Data center failure or network partition may pause the process and make the row unavailable
 (but can still continue after data center recovers or network partition heals). 
 
