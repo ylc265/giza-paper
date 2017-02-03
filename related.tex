@@ -35,10 +35,11 @@ NCCloud~\cite{nccloud:fast12} all stripe and erasure code data across multiple
 cloud storage providers. HAIL~\cite{hail:ccs09} applies error correction coding
 within individual providers and erasure coding across them. It is designed to
 withstand Byzantine adversaries and unifies proofs of retrievability and failure
-recovery. In comparison, Giza operates in a trusted environment and employs a
+recovery. 
+
+In comparison, Giza operates in a trusted environment and employs a
 leaderless consensus protocol. Updates may originate from arbitrary data centers
-and still complete with optimal latency. There is no need to relay all the
-updates through the primaries. Giza also exploits the trade-off among storage
+and still complete with optimal latency without relaying the updates through a primary. Giza also exploits the trade-off among storage
 cost, network bandwidth and durability.
 
 RACS~\cite{racs:socc10} builds a working system that is compatible with existing
