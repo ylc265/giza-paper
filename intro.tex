@@ -15,14 +15,13 @@ weatherspoon2005long, hail:ccs09, racs:socc10, hu12nccloud} arguing for storing 
 in erasure coded form, as opposed to replication, across geo-graphically
 distributed data centers. Compared to geo-replication, cross-DC erasure coding
 tolerates data center failure and ensures durability, while significantly
-reduces storage cost. The same economic force that has driven cloud providers to
+reducing storage cost. The same economic force that has driven cloud providers to
 erasure code data within individual data centers naturally extends to the
 cross-DC scenario.
 
 Nevertheless, none of the cloud providers today offer options to erasure code
 customer data across data centers. This is largely due to the prohibitive cost
-of cross-DC network traffic. The reduction in storage cost comes to balance the
-additional cost of inflated cross-DC network traffic, for both read/write during
+of cross-DC network traffic. The reduction in storage cost is offset by the additional cost of inflated cross-DC network traffic, for both read/write during
 normal operation and access/rebuild in the event of data center failure, as
 discussed in detail in Section~\ref{sec:motivation}. Since the total cost of
 storing customer data needs to cover both the storage and the cross-DC network
@@ -81,20 +80,20 @@ It offers an externally strong consistent (linearizable~\cite{herlihy90lineariza
 versioned object store that erasure codes objects across global data centers.
 Customers access Giza by creating Giza storage accounts. For each storage
 account, the customers have the flexibility to choose the set of data centers
-where their data are striped across. In addition, they can specify erasure coding scheme.
+where their data are striped across. In addition, they can specify the erasure coding scheme.
 Giza employs classic $n = k + m$ Reed-Solomon coding, which generates $m$ parity fragments from $k$ data fragments.
 All coded fragments are stored respectively in $n$ different DCs,
 so as to tolerate up to $m$ arbitrary DC failures.
 %By allowing the customers to choose the set of data centers and specify the erasure coding scheme, Giza gives the customers complete control of storage overhead and durability.
 The customers access Giza with straightforward {\em put}, {\em get} and {\em delete} interface. In addition, Giza supports versioning, where new {\em put} does not overwrite existing data, but rather creates a new version of the same data. The old version remains available until it is explicitly deleted.
 
-Giza operates on top of existing cloud storage systems that offers reliable and redudant local data storage. It stores data
-objects in cloud blob storage and the metadata of the objects in cloud table
+Giza operates on top of existing cloud storage systems that offers reliable and redundant local data storage. It stores the data
+objects in the cloud blob storage and their metadata in the cloud table
 storage. Figure~\ref{fig:giza_example} illustrates an exemplary flow of storing
 an object in Giza with 2 + 1 erasure coding.
 %Giza operates a number of {\em stateless} Giza nodes in every data center. Say a customer uses a Giza client (command line, library, or REST interface) to store a 4MB data object. The Giza client routes the {\em put} request to one of the Giza nodes in the data center closest to the customer.
 Giza divides the object into two data fragments ($a$ and $b$) and encodes them to a parity fragment $p$.
-The fragments are stored respectively in the blob storage in three data centers. The metadata, consisting of the pointers to the
+The fragments are stored in their respective blob storage in three data centers. The metadata, consisting of the pointers to the
 blobs, as well as versioning information, is replicated in the table storage across the
 same data centers.
 
@@ -111,12 +110,10 @@ beyond a short period after creation,
 object are rare (albeit possible).
 
 Given the target workload, Giza optimizes for the common case, where there is
-a single writer and multiple readers. Giza strives to {\em make the common case
-fast}. In fact, the most optimized version of Giza achieves optimal latency,
-which is a single cross-DC round trip for both {\em put} and {\em get}.
+a single writer and multiple readers. Giza is optimized for the common case, achieving a single cross-DC round trip for both {\em put} and {\em get}.
 
 On the other hand, Giza handles the rare case properly,
-and provides strong consistency when concurrent updates to the same object {\em do} occur.
+and provides strong consistency when concurrent updates to the same object do occur.
 %For instance, Giza tolerates data center failure. In the
 %event of a data center being temporarily unavailable (or simply slow), the
 %customers are able to continue to read and write data objects without much
@@ -136,7 +133,7 @@ table storage across multiple data centers do not readily offer the desired
 external strong consistency. The key technical challenge Giza addresses is how to achieve
 optimal latency with single {\em put}, while at the same time provide
 strong consistency under concurrency, over the collection of individual blob and
-table storage across multiple data centers.
+table storages across multiple data centers.
 
 Towards this end, the paper makes the following contributions:
 \begin{itemize}
@@ -152,8 +149,8 @@ Towards this end, the paper makes the following contributions:
       and Fast Paxos~\cite{lamport05fast}, in a novel way so that it operates on top of existing cloud storage
       systems.
     \item Giza is deployed in \deployment. Experimental results demonstrate
-      that Giza achieves all our design goals. In particular, it is worth
-      pointing out that Giza achieves much lower latency than naively adopting a
-      globally consistent storage system, like CockroachDB (widely considered as open source
-      implementation of Google's Spanner).
+      that Giza achieves all our design goals. %In particular, it is worth
+      %pointing out that Giza achieves much lower latency than naively adopting a
+      %globally consistent storage system, like CockroachDB (widely considered as open source
+      %implementation of Google's Spanner).
 \end{itemize}
