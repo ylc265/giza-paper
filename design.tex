@@ -14,34 +14,39 @@ the data model, and the protocols for the {\em put}, {\em get} and {\em delete} 
 
 \paragraph{Architecture}
 {\name} is a global-scale cloud storage system 
-that spans across many data centers in the world.
+that spans across many data centers.
 It stores mutable, versioned objects.
 Figure~\ref{fig:arch} shows the architecture of \name. 
-\name separates data path from meta-data path.
+To store a \name object through a {\em put} operation,  
+there is a data operation, and a metadata operation, both are carried out simultanenously to improve the performance. 
 On the data path, \name splits and encodes the object into data and parity fragments.
 Each fragment is uniquely named by its content hash
 and stored in a different DC.
+The design also ensures that if there are multiple objects in a \name account, only one copy of the object needs to be stored, thus achieves deduplication saving within the DC. 
+It is possible that the exact same fragments may be stored at different DC. \name doesn't attempt to detect duplicate fragments across DC for performance concern. 
 Each Update to the object creates a new versions of the object.
 The version numbers and the hashes of the coded fragments in each version
-constitutes the meta-data of the object.
-On the meta-data path, \name replicates the meta-data across the data centers.
+constitutes the metadata of the object.
+On the metadata path, \name replicates the metadata across the data centers.
 
 We implement \name on top of an existing cloud storage infrastructure. This 
 provides two advantages.  First, doing so allows the rapid development of \name by re-using 
-mature, deployed systems.  Second, it simplifies the failure recovery and 
+mature, deployed and well-tested systems.  Second, it simplifies the failure recovery and 
 the deployment of \name: the \name nodes are completely stateless and can be
 readily integrated with the rest of the stateless cloud storage front-ends.
 
 %Existing cloud storage systems have redundancy within a single data center, but are not geo-replicated.  Thus, \name must explicitly provide cross data center redundancy through coding and replication.
-To write the object,
-{\name} stores the coded fragments in different data centers in cloud blob stores,
-such as Azure Blob, or AWS S3.
-Additionally, \name replicates the object's meta-data across multiple data centers 
-and stores the metadata in cloud tables, such as Azure Table, or AWS DynamoDB. 
-The number of the coded fragments the set of data centers
-storing the data objects are configurable during the account setup depending on the user desired tradeoff on
+% To write the object,
+% {\name} stores the coded fragments in different data centers in cloud blob stores,
+% such as Azure Blob, or AWS S3.
+% Additionally, \name replicates the object's metadata across multiple data centers 
+% and stores the metadata in cloud tables, such as Azure Table, or AWS DynamoDB. 
+\name store data and coded fragments in cloud blob store, e.g., Azure Blob, and store the metadata in cloud table, 
+e.g., Azure Table. 
+The total number of the data plus coded fragments is equal to the number of data centers
+storing the data objects, and is configured during the account setup depending on the user desired tradeoff on
 durability vs. cost.
-%The number of data centers to replicate the meta-data is fixed at 3.
+%The number of data centers to replicate the metadata is fixed at 3.
 
 %blob service as building blocks, to store metadata and data respectively. This evolutional
 %design allows {\name} to minimize footprint of new code. In fact, {\name} merely needs to replace the previous front-end
@@ -59,41 +64,41 @@ durability vs. cost.
 
 
 \paragraph{Technical challenges}
-Giza names each coded fragments by their content hashes.
-As a result, each coded fragments is immutable, as updating the object would result in completely different fragments and hashes.
-Hence, storing immutable fragments in the cloud blob stores makes the data path straightforward and greatly simplified. 
+% JinL: should we need to discuss ref counting & garbage collection when a fragment is no longer referenced? 
+% Or is that considered well understood in the industry that we don't need to dicuss? 
+In \name, each fragment (data or coded) is uniquely indexed by its content hashes.
+As a result, each fragment is immutable, which makes the data path straightforward and simplified. 
 
-The opposite is true for the metadata path.
-In designing \name, we address three main technical challenges involving the metadata path.
+The metadata path is more tricky, with the following three main technical challenges:
 \begin{enumerate}
 
-\item {\it Building a strongly consistent, geo-replicated meta-data storage out of existing 
+\item {\it Building a strongly consistent, geo-replicated metadata storage out of existing 
 single-DC cloud tables.}
-There are existing solutions, such as Cassandra,
+There are prototype systems, such as Cassandra,
 that offer strongly consistent, geo-replicated storage systems.
 Giza chooses not to adopt the existing solutions because
-1) it is desirable to make \name nodes stateless and keep all data and meta-data
-in existing cloud storage infrastructure;
+1) it is desirable to make \name nodes stateless and keep all data and metadata
+in existing well-tested cloud storage infrastructure;
 2) it is preferable to implement protocols best suited for our targeted workloads,
 so as to achieve optimal latency.
 Indeed, Giza ensures strong consistency by implementing the Paxos consensus protocol.
-The trick is to implement Paxos using existing cloud storage APIs and achieve 
+The trick is to implement Paxos using existing cloud table APIs and achieve 
 optimal latency in the cross-DC setting.
 
-\item {\it Jointly optimizing the data and meta-data paths to achieve a single
+\item {\it Jointly optimizing the data and metadata paths to achieve a single
 cross-DC round trip for read/write operations.}
 A naive approach would execute the data and metadata path sequentially:
-a \name node completes the data path, write out the blob first before starting on the meta-data path.
-While doing so guarantees that data is durably written at multiple DCs
-before it becomes externally visible, each write operation requires at least two cross-DC round trips.
+first write out the blob, completes the data path, and then starts on the metadata path.
+Doing so guarantees that the metadata written and externally visible always matches with the stored data. 
+However, each write operation will require at least two cross-DC round trips.
 Similarly, a naive approach for read operation would take the first cross-DC round trip to retrieve the metadata
 and then the second round trip to retrieve the data.
-The desing of \name aims to combine the data and metadata path operations to achieve a single cross-DC round trip for both read and write.
+We want to combine the data and metadata path of \name to achieve a single cross-DC round trip for both read and write.
 
 \item {\it Performing garbage collection efficiently and promptly.} 
-When old versions or an entire data object is deleted,
-\name must remove obsolete data and/or meta-data from the underlying cloud storage.
-\name must also remove data fragments written by a failed data path write.
+When a data object is deleted, or its old versions are garbage collected, 
+\name must remove obsolete fragments and/or metadata from the underlying cloud blob storage and cloud table. 
+\name must also remove fragments generated by a failed data path write.
 Both operations are non-trivial because \name's garbage 
 collection mechanism must be able to handle data center failures
 while ensuring data consistency and durability.
@@ -109,60 +114,51 @@ while ensuring data consistency and durability.
 
 % A typical giza architecture for a data center includes the giza nodes, the Azure Blob Storage, and the Azure Table Storage. The giza nodes are the processing units of the Giza architecture and manages the data and the metadata. Furthermore the giza nodes participate in paxos rounds as coordinators. Figure 1 illustrates the architecture of Giza. Giza separates data from metadata and handles them on different paths. The data path is responsible for encoding the data and sending the data fragments across data centers. Each data fragment is stored in the corresponding DC’s Azure Blob Storage. The metadata path is responsible for storing the latest version of the data and the location of its data fragments. Giza uses a variant of the Paxos state machine replication (SMR) to maintain consistency of the metadata where each metadata server maintains a local copy of the replicated log. The replicated log is stored in the Azure Table Storage.
 
-\subsection{Implementing Paxos using Cloud APIs}
+\subsection{ Paxos using Cloud APIs}
 
-On the meta-data path, \name implements Paxos consensus protocols to serialize the operations on each data object.
-More specifically, it implements Paxos on top of existing cloud tables, such as Azure Table, or AWS DynamoDB.
+The metadata operation of \name implements Paxos on top of an existing cloud tables (Azure Table).
 
-\subsubsection{Paxos and Fast Paxos: A Brief Primer}
+\subsubsection{Paxos and Fast Paxos: A Brief Primer and Implementation}
 
 The Paxos algorithm~\cite{lamport01paxos} provides a mechanism to reach consensus among a set of {\em acceptors} and one or more {\em proposers}. Each proposer initiates a Paxos voting process by first picking a distinguished {\em ballot}. All ballots are unique and can be compared to each other. The proposer sends requests to the acceptors, and associates each request with a proposed value. Each acceptor decides whether to accept a request based on its own state. The proposed value is {\em committed} when it is accepted by a {\em quorum} of the acceptors. The acceptors update their states when a request or value is accepted.
-
-In our implementation, each Giza node is a proposer. The acceptors in Paxos are typically active processors, which are capable of comparing the ballot of an incoming request with its own state and deciding whether to accept the request. In Giza, we use the cloud tables as the acceptors and implement the acceptor's logic as {\em atomic conditional updates } to the table.
+Paxos is typical implemented via active acceptors, which are capable of comparing the ballot of an incoming request with its own state and deciding whether to accept the request. In \name, we use the cloud tables as the acceptors and implement the acceptor's logic as {\em atomic conditional updates } to the table. This requires some modification of the proposer logic, 
+which is implemented at each \name node. 
 
 Paxos takes two {\em phases} to reach consensus, where {\em phase} $1$ prepares a ballot and {\em phase} $2$ accepts a value. Since each phase takes one round trip, applying Paxos in Giza results in two cross-DC round trips for metadata writes~\footnote{Typical Paxos optimization elects a distinguished leader. The leader executes {\em phase} $1$ in advance and only takes one round trip in {\em phase} $2$ to reach consensus. This, however, requires relaying all updates through the leader. In the cross-DC scenario, it takes one cross-DC round trip to relay updates originating from non-leader DCs. Therefore, these updates still take two cross-DC round trips to commit.}.
 
-Fast Paxos~\cite{lamport05fast} is a version of Paxos that optimizes the performance over cross-DC acceptors. It employs two types of rounds: fast round and classic round. A fast round sends a PreAccept request and takes a single round trip to reach consensus. A classic round resembles the two phases in Paxos and takes two round trips.
-The fast round in Fast Paxos demands a larger quorum than that in Paxos. Consider a case with $3$ acceptors. Paxos is able to reach consensus with 2 out of the 3 acceptors (quorum size of 2). In comparison, Fast Paxos only reaches consensus with all 3 acceptors (quorum size of 3). However, the larger quorum requirement is masked by Giza's data path, which requires a larger number of data centers to be online to make progress.
+Fast Paxos~\cite{lamport05fast} is a variation of Paxos that optimizes the performance over cross-DC acceptors. It employs two types of rounds: fast round and classic round. A fast round sends a PreAccept request and takes a single round trip to reach consensus. A classic round resembles the two phases in Paxos and takes two round trips.
+The fast round in Fast Paxos demands a larger quorum than that in Paxos. Consider a case with $3$ acceptors. Paxos is able to reach consensus with 2 out of the 3 acceptors (quorum size of 2). In comparison, Fast Paxos only reaches consensus with all 3 acceptors (quorum size of 3). The advantage is that if all 3 acceptors are working, the consensus can be reached in a single round trip. The larger quorum requirement is acceptable in \name, as its data path need to store fragments in a larger number of data centers to make progress as well.
 
 %Because Giza's data path requires multiple data centers to be online to make progress, 
 %In Giza, the success of the data path requires multiple data centers to be online to make progress, it turns out easy to satisfy the demand of a larger quorum, and suites the implementation need in Fast Paxos. E.g., Giza requires at least 3 data centers to stripe the coded fragments (with $2 + 1$ erasure coding). Hence, the data path won't succeed unless there are at least 3 data centers available, which makes it easy to satisfy the larger quorum requirement.
 
-Giza implements both Paxos and Fast Paxos. In the below description, we focus on Fast Paxos and skip the details regarding Paxos.
+Giza implements both Paxos and Fast Paxos. We discusses the Fast Paxos only, as it is more tricky (but more performant) than  Paxos.
 %Hence, the most optimized metadata path in Giza implements Fast Paxos, as detailed next.
 
 \begin{figure}[tp]
 \centering
 \includegraphics[width=0.5\textwidth]{fig/Giza_Metadata}
-\caption{For each object, \name stores the Paxos protocol state and the object meta-data 
+\caption{For each object, \name stores the Paxos protocol state and the object metadata 
 in a single row in the underlying cloud table.\label{fig:metadataschema}}
 \end{figure}
 
-\subsubsection{Meta-data Storage Layout}
+\subsubsection{Metadata Storage Layout}
 
 %\name implements the Paxos consensus protocol to serialize the operations on each data object.
-To implement the Paxos consensus protocol,
-\name needs to persist the Paxos states in addition to the metadata for the object.
-{\name} conveniently stores the Paxos states together with the metadata in the cloud table,
-one table row per object, with a dynamic number of columns. The layout of each table row is
+% To implement the Paxos consensus protocol,
+\name needs to persist the Paxos states together with the metadata for the object in the cloud table. 
+We use one table row per object, with a dynamic number of columns, with each three columns corresponding to one version of the object. The layout of each table row is
 shown in Figure~\ref{fig:metadataschema}.
 
-Each object may have multiple versions.
-The versions are represented by consecutive natural numbers, starting from $1$.
-A \name write operation leads to a new version of the object.
-For each version, Giza invokes a separate Paxos instance to ensure consistency
-in the event of races among multiple writers and failures.
-The states of all the Paxos instances are stored in the same table row,
-as part of the metadata for the data object.
-Specifically, the meta-data contains a triplet of columns for each version of the object
+Each object version is represented by a consecutive natural numbers, starting from $1$.
+Every \name write to the same object creates a new version.
+For each version, \name launches a separate Paxos proposal, and uses Paxos to guard against races among other \name writers and cloud table failures.
+For a data object, the metadata of all versions and the states of all the Paxos instances are stored in the same table row.
+Specifically, the metadata contains a triplet of columns for each version of the object
 (Figure~\ref{fig:metadataschema}).
-%The triplet includes {\tt highest\_proposal\_seen}, {\tt highest\_accepted\_proposal}, and {\tt highest\_accepted\_value}.
-The triplet includes {\tt highest ballot seen} and {\tt highest accepted ballot},
-for recording the states of each Paxos instance.
-The triplet also includes {\tt highest accepted value},
-which contains the meta-data information, including the erasure coding scheme,
-the name of each coded fragment, whether it is one of the original or parity fragments,
-and which DC the fragment is stored at.
+Two of them are Paxos states: {\tt highest ballot seen} and {\tt highest accepted ballot}.
+The other column, {\tt highest accepted value}, stores the metadata, including the erasure coding scheme,
+the hash of each fragment (data or parity), and which DC the fragment is stored at.
 
 {\name} additionally maintains a set of {\tt known committed versions} 
 for all those that have been committed by Paxos. This is to facilitate both {\em put} and {\em get} operations and will be discuessed in the following sections.
@@ -173,46 +169,42 @@ for all those that have been committed by Paxos. This is to facilitate both {\em
 %Hence, while all the version numbers in the set are guaranteed to have been committed,
 %the latest committed version number might yet have to be included.
 
-\subsubsection{Meta-data Write - Common Case}
+\subsubsection{Metadata Write - Common Case}
 
 The metadata path begins by choosing a proper new version number to run the
 Fast Paxos~\cite{lamport05fast} algorithm. Since version numbers are
-consecutive, the new version needs to be next to the most recently committed
+consecutive, the new version should succeed the most recently committed
 version. While it is safe to use an outdated version (in which case the {\name}
 node will later realize its mistake and retry with a higher version number), it
 is unsafe to choose a higher one resulting in non-consecutive versions. The
 {\name} node identifies the proper version in an optimistic fashion.
 Specifically, it reads {\tt known committed versions} from the table in its
 local DC, then uses the next higher number as the chosen version number to
-invoke the corresponding Fast Paxos instance.
-
-With the version number chosen, the {\name} node replicates a PreAccept request
-to the tables in all the DCs.
-Each request is an {\em atomic conditional update} to the corresponding table in a single DC.
-If there are no competing requests on the same version, the PreAccept request will succeed in updating the table row.
+launch a Fast Paxos round.
+A PreAccept request is sent to all cloud tables, each located in a different DC.
+Each request is an {\em atomic conditional update} on the table row of the object.
+If there are no competing write requests to the same object, the PreAccept request will succeed in updating the table row.
 Otherwise, the PreAccept request will be rejected by the table and leave the table row unchanged.
 Section~\ref{sec:impl} illustrates how atomic conditional update is implemented leveraging existing cloud APIs.
 
 Whenever the {\name} node receives a {\em fast quorum} of positive PreAccept responses,
 the corresponding version is considered to have been committed.
-The {\name} node asynchronously replicates a Commit confirmation to all the DCs to update 
+The {\name} node asynchronously sends a Commit confirmation to all the cloud tables to update 
 the set of {\tt known committed versions} to include the recently committed version.
 The Commit confirmation is again an atomic conditional update,
 which only succeeds if the version number is not yet included in the current set.
 
 Since the Commit confirmation is completed asynchronously,
 the critical path only involves the PreAccept request and response.
-Hence, the above described metadata write involves only one cross-DC round trip 
-and is referred to as the {\em fast path}.  When there is no
-contention, the fast path always succeeds.
+Hence, without conflict, the above described metadata write involves only one cross-DC round trip 
+and is referred to as the {\em fast path}. 
+% When there is no contention, the fast path always succeeds.
 
-\subsubsection{Meta-data Write with Contention}
+\subsubsection{Metadata Write with Contention}
 
-In the case of contention, the fast path may not succeed, i.e. the {\name} node
-cannot collect a fast quorum of positive PreAccept responses. The contention
-may come from concurrent updates to the same version, or a {\name} node trying
-to recover from failures by re-committing the same or a different value to an
-ongoing version.  In this case, {\name} enters what is referred to as a
+The fast path may fail when the {\name} node fails to collect a fast quorum of positive PreAccept responses. 
+This may result from concurrent updates to the same object (contention), or because one or more cloud tables fail.  
+In this case, {\name} enters what is referred to as a
 \emph{slow path} to perform classic Paxos in order to guarantee safety in case of
 contention.
 
@@ -242,7 +234,7 @@ The accept request is again an atomic conditional update; it succeeds in writing
 highest accepted ballot} and {\tt highest accepted value} if neither {\tt
 highest ballot seen} and {\tt highest accepted ballot} is larger.
 As soon as a majority of Accept requests succeed, the \name node considers the
-corresponding meta-data write completed and sends acknowledgment to clients.
+corresponding metadata write completed and sends acknowledgment to clients.
 Additionally, a Commit confirmation is replicated in the background, as described before.
 
 \subsubsection{Metadata Read}
