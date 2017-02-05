@@ -1,65 +1,27 @@
 \section{Introduction}
 
+Microsoft Azure Storage is a global cloud storage system with a footprint in 38 geographic regions~\cite{}. It provides customers the ability to store seemingly limitless amounts of data. Since 2010, Azure Storage has grown from tens of petabytes to many exabytes, with many tens of trillions of objects stored~\cite{}.
+
+%\comment{https://azure.microsoft.com/en-us/regions/}
+%\comment{GREENBERG, A. SDN for the Cloud. Keynote in the 2015 ACM Conference on Special Interest Group on Data Communication, 2015.}
+
+To protect customer data against disk, node and rack failure within data centers, Azure Storage applies Local Reconstruction Coding (LRC)~\cite{} to ensure high availability and durability. LRC significantly reduces storage cost over the conventional scheme of keeping 3 full copies.
+
+To further protect customer data against catastrophic failure of entire data centers (say due to earthquake, tsunami, etc.), Azure Storage optionally replicates customer data to secondary data centers hundreds of miles away. Many customers choose the geo-replication option. These customers are migrating their entire IT infrastructure to the cloud and taking advantage of the global footprint of Azure. It is essential to them that even in the unlikely, albeit inevitable, event of catastrophic data center failure, their data remain durable.
+
+Geo-replication, however, doubles the cost of storage. With LRC, Azure Storage is able to achieve $1.29$x of storage overhead within single data center. With geo-replication, storage overhead immediately jumps to $2 \times 1.29 = 2.58$x. With many exabytes at present and exponential growth projected, an alternative solution able to significantly reduce storage cost is highly desirable.
+
 \subsection{Cross-DC Erasure Coding: Why Now?}
 
-As the entire IT industry is rapidly moving to the cloud, more and more data
-centers are being built all over the globe. The event that one of the data
-centers will fail catastrophically becomes inevitable over time. In other words,
-this is no longer a matter of ``if'', but rather ``when''. 
-%{\em Designing for disasters}~\cite{keeton04designing} becomes essential and
-Data stored in the
-cloud have to be protected against catastrophic data center failure.
+Erasure coding across geographically distributed data centers is particularly appealing. As many prior work~\cite{oceanstore:asplos00, pond:fast03, weatherspoon2005long, hail:ccs09, racs:socc10, hu12nccloud} have demonstrated, cross-DC erasure coding tolerates data center failure and ensures durability, while significantly reducing storage cost compared to geo-replication. The same economic argument that has driven cloud providers to erasure code data within individual data centers naturally extends to the cross-DC scenario.
 
-There have been a long line of prior work~\cite{oceanstore:asplos00, pond:fast03,
-weatherspoon2005long, hail:ccs09, racs:socc10, hu12nccloud} arguing for storing data
-in erasure coded form, as opposed to replication, across geo-graphically
-distributed data centers. Compared to geo-replication, cross-DC erasure coding
-tolerates data center failure and ensures durability, while significantly
-reducing storage cost. The same economic force that has driven cloud providers to
-erasure code data within individual data centers naturally extends to the
-cross-DC scenario.
+On the other hand, one has to be mindful of the trade-offs of cross-DC erasure coding. When serving customer request involves retrieving data from multiple data centers that are geographically distributed, there is additional cost in terms of cross-DC network traffic and latency. Also, when catastrophic data center failure does occur, recovery of lost data would trigger massive erasure coding reconstruction. While it is throttled and prioritized based on demand, the reconstruction inevitably requires massive cross-DC network bandwidth.
 
-Nevertheless, none of the cloud providers today offer options to erasure code
-customer data across data centers. This is largely due to the prohibitive cost
-of cross-DC network traffic. The reduction in storage cost is offset by the additional cost of inflated cross-DC network traffic, for both read/write during
-normal operation and access/rebuild in the event of data center failure, as
-discussed in detail in Section~\ref{sec:motivation}. Since the total cost of
-storing customer data needs to cover both the storage and the cross-DC network
-traffic, cross-DC erasure coding has not seen wide deployment yet.
+Therefore, cross-DC erasure coding only becomes economically attractive if 1) there are workloads that consume very large storage capacity while incur very little cross-DC traffic; 2) there are enough cross-DC network bandwidth at very low cost.
 
-%\begin{table}[thp]
-%\centering
-%\small
-%\begin{tabular}{|l|c|c|}
-%\hline
-%TransAtlantic Cable             & FLAG Atlantic 1~\cite{bib:FA-1}   & MAREA~\cite{bib:MAREA1, bib:MAREA2}
-%\\ \hline \hline
-%Ready For Service               & 2001                              & 2017
-%\\ \hline
-%Cost (Billion)                  & 1.1                               & undisclosed
-%\\ \hline
-%Capacity                        & 10 Gbps                           & 160 Tbps
-%\\ \hline \hline
-%\end{tabular}
-%\caption{Cross-DC bandwidth cost reducing by orders of magnitude.}
-%\label{tab:mears}
-%\end{table}
-Fortunately, technological breakthroughs in wide area networking have dramatically reduced cross-DC bandwidth cost.
-There are two key driving forces. 1) The erbium-doped fiber
-amplifiers~\cite{mears1986low} make it practical to amplify a huge spectrum of
-optical signal directly, without the need to convert to electrical signal.
-2) Dense Wave Division Multiplexing (DWDM) is in turn enabled by the fiber
-amplifiers, which can send 10+ terabits per second over single fiber~\cite{zhu2011112}.
-Most recently, Facebook and Microsoft have teamed up to build $MAREA$, a new
-fiber optic cable under the Atlantic Ocean that uses eight pairs of fiber optic
-strands and will come online in 2017 with 160 Tbps capacity~\cite{bib:MAREA1, bib:MAREA2}.
-In comparison, a transatlantic cable dated back in 2001 cost 1.1 billion dollars,
-but had a mere capacity of 10 Gbps~\cite{bib:FA-1}.
-Hence, MAREA represents over 10,000$\times$ bandwidth increase in less than two decades.
-%While the cost of MAREA remains undisclosed, it suffices
-%to say that cross-DC bandwidth cost has reduced by several orders of magnitude.
-The significant cost reduction in cross-DC bandwidth is now
-making cross-DC erasure coding economically attractive.
+For the former, Azure Storage indeed serves many customers with such workloads. Using Microsoft OneDrive service as an example, section~\ref{sec:motivation} presents a quantitative analysis of such workloads and why they are ideal for cross-DC erasure coding.
+
+For the latter, technological breakthroughs (e.g., erbium-doped fiber amplifier (EDFA)~\cite{mears1986low} and dense wave division multiplexing (DWDM)~\cite{zhu2011112}) have dramatically increased bandwidth and reduced cost in cross-DC networking. As an example, Facebook and Microsoft have recently teamed up to build $MAREA$, a new fiber optic cable under the Atlantic Ocean that uses eight pairs of fiber optic strands and will come online in 2017 with 160 Tbps capacity~\cite{bib:MAREA1, bib:MAREA2}. In comparison, a transatlantic cable dated back in 2001 with a price tag of 1.1 billion dollars had a mere capacity of 10 Gbps~\cite{bib:FA-1}. Hence, MAREA represents over 10,000$\times$ bandwidth increase and price reduction in less than two decades. The significant advancement in cross-DC networking is now making cross-DC erasure coding economically viable.
 
 \comment{bib:MAREA1, http://www.wsj.com/articles/facebook-and-microsoft-to-build-fiber-optic-cable-across-atlantic-1464298853}
 \comment{bib:MAREA2, http://www.usatoday.com/story/experience/2016/05/26/microsoft-facebook-undersea-cable-google-marea-amazon/84984882/}
@@ -74,68 +36,36 @@ making cross-DC erasure coding economically attractive.
 
 \subsection{Giza Overview}
 
-Giza exploits the reduction in cross-DC bandwidth cost
-and leverages erasure coding to optimize the total cost of storing customer data in the cloud.
-It offers an externally strong consistent (linearizable~\cite{herlihy90linearizability}),
-versioned object store that erasure codes objects across global data centers.
-Customers access Giza by creating Giza storage accounts. For each storage
-account, the customers have the flexibility to choose the set of data centers
-where their data are striped across. In addition, they can specify the erasure coding scheme.
-Giza employs classic $n = k + m$ Reed-Solomon coding, which generates $m$ parity fragments from $k$ data fragments.
-All coded fragments are stored respectively in $n$ different DCs,
-so as to tolerate up to $m$ arbitrary DC failures.
-%By allowing the customers to choose the set of data centers and specify the erasure coding scheme, Giza gives the customers complete control of storage overhead and durability.
-The customers access Giza with straightforward {\em put}, {\em get} and {\em delete} interface. In addition, Giza supports versioning, where new {\em put} does not overwrite existing data, but rather creates a new version of the same data. The old version remains available until it is explicitly deleted.
+Giza exploits the reduction in cross-DC bandwidth cost and leverages erasure coding to optimize the total cost of storing customer data in the cloud. It offers an externally strong consistent (linearizable~\cite{herlihy90linearizability}), versioned object store that erasure codes objects across global data centers.
 
-Giza operates on top of existing cloud storage systems that offers reliable and redundant local data storage. It stores the data
-objects in the cloud blob storage and their metadata in the cloud table
-storage. Figure~\ref{fig:giza_example} illustrates an exemplary flow of storing
-an object in Giza with 2 + 1 erasure coding.
-%Giza operates a number of {\em stateless} Giza nodes in every data center. Say a customer uses a Giza client (command line, library, or REST interface) to store a 4MB data object. The Giza client routes the {\em put} request to one of the Giza nodes in the data center closest to the customer.
-Giza divides the object into two data fragments ($a$ and $b$) and encodes them to a parity fragment $p$.
-The fragments are stored in their respective blob storage in three data centers. The metadata, consisting of the pointers to the
-blobs, as well as versioning information, is replicated in the table storage across the
-same data centers.
+Customers access Giza by creating Giza storage accounts. For each storage account, the customers have the flexibility to choose the set of data centers where their data are striped across. In addition, they can specify the erasure coding scheme. Giza employs classic $n = k + m$ Reed-Solomon coding, which generates $m$ parity fragments from $k$ data fragments. All $n$ coded fragments are stored in separate DCs, which tolerates up to $m$ arbitrary DC failures.
+
+Figure~\ref{fig:giza_example} illustrates an exemplary flow of storing an object in Giza with 2 + 1 erasure coding. Giza divides the object into two data fragments ($a$ and $b$) and encodes a parity fragment $p$. It then stores the coded fragments in $3$ separate data centers. 
+
+Giza is accessible via {\em put}, {\em get} and {\em delete} interface. In addition, Giza supports versioning, where new {\em put} does not overwrite existing data, but rather creates a new version of the data. The old versions remain available until explicitly deleted.
 
 \subsection{Challenges and Contributions}
 
-Giza targets cloud drive services which store predominantly large objects, such as
-Dropbox, Google Drive, and Microsoft OneDrive, etc.
-The design is motivated by the workload of such services observed in Section~\ref{sec:motivation}
-and summarized here:
-1) large storage space consumption,
-2) cold data, where only a tiny percentage of objects are accessed
-beyond a short period after creation,
-3) objects may be updated over time, but concurrent updates of the same
-object are rare (albeit possible).
+Giza stripes objects across multiple data centers, so reads and writes require cross-DC communication. The latency is minimized when reads and writes complete with single cross-DC round trip. This is not difficult to achieve for typical Giza workloads, where objects are updates infrequently.
 
-Given the target workload, Giza optimizes for the common case, where there is
-a single writer and multiple readers. Giza is optimized for the common case, achieving a single cross-DC round trip for both {\em put} and {\em get}.
+Nevertheless, concurrent updates of the same object do exist. Giza needs to ensure strong consistency when they actually occur. This becomes particularly interesting as Giza allows requests to originate from any DC. Consider two concurrent {\em put} requests of the same object (with different data) from two separate data centers. Depending on network latency, the individual requests may arrive at different data centers in conflicting order. If not handled properly, they would certainly result in data inconsistency. 
 
-On the other hand, Giza handles the rare case properly,
-and provides strong consistency when concurrent updates to the same object do occur.
-%For instance, Giza tolerates data center failure. In the
-%event of a data center being temporarily unavailable (or simply slow), the
-%customers are able to continue to read and write data objects without much
-%impact. The unavailable (or slow) data center may miss updates, which could
-%potentially lead to conflict when they receive new updates again.
-%For instance,
-%the retry of a {\em put} could be processed by a different server (or even DC)
-%and results in conflict with the previously unfinished {\em put}.
-%Even though concurrency is rare,
-%it is crucial for Giza to {\em guarantee the rare case correct}.
-% Indeed, Giza provides external consistency.
+To ensure strong consistency, one possible approach is to dedicate a primary data center that handles all requests and enforces execution order. This is less than ideal because the requests from secondary data centers have to be sent to the primary first. This would incur extra cross-DC latency, even when there are no concurrent updates.
 
-Giza operates on top of existing cloud storage systems. 
-The blob and table storage within individual data centers operate independently.
-Hence, while strongly consistent individually, the collection of the blob and
-table storage across multiple data centers do not readily offer the desired
-external strong consistency. The key technical challenge Giza addresses is how to achieve
-optimal latency with single {\em put}, while at the same time provide
-strong consistency under concurrency, over the collection of individual blob and
-table storages across multiple data centers.
+Ideally, Giza should optimize for the common case, where reads and writes complete with single cross-DC round trip and achieve minimum latency. This should be true for all reads and writes from any data center. In addition, Giza should ensure consistency in the rare case, where concurrent updates to the same object do occur. It is expected and acceptable that latency would increase as it takes multiple cross-DC round trips to resolve conflict.
 
-Towards this end, the paper makes the following contributions:
+%\comment{
+%Giza operates on top of existing cloud storage systems. 
+%The blob and table storage within individual data centers operate independently.
+%Hence, while strongly consistent individually, the collection of the blob and
+%table storage across multiple data centers do not readily offer the desired
+%external strong consistency. The key technical challenge Giza addresses is how to achieve
+%optimal latency with single {\em put}, while at the same time provide
+%strong consistency under concurrency, over the collection of individual blob and
+%table storages across multiple data centers.
+%}
+
+This paper addresses the above key technical challenge and makes the following contributions:
 \begin{itemize}
     \item We have designed and implemented Giza, a strongly consistent,
       versioned object store that erasure codes objects across globally
@@ -143,13 +73,12 @@ Towards this end, the paper makes the following contributions:
     \item Giza is fast in the common case: when there is no concurrency, Giza
       completes within a single cross-DC round trip, which is optimal given the
       requirement to tolerate data center failure.
-    \item Giza provides strong consistency when accessed concurrently, even with data center
+    \item Giza ensures strong consistency when accessed concurrently, even with data center
       failure.
-    \item Giza employs well-known distributed algorithms, such as Paxos~\cite{lamport01paxos}
-      and Fast Paxos~\cite{lamport05fast}, in a novel way so that it operates on top of existing cloud storage
-      systems.
+    \item Giza adapts well-known distributed algorithms - Paxos~\cite{lamport01paxos}
+      and Fast Paxos~\cite{lamport05fast} - in a novel way on top of existing cloud storage systems.
     \item Giza is deployed in \deployment. Experimental results demonstrate
-      that Giza achieves all our design goals. %In particular, it is worth
+      that Giza achieves our design goals. %In particular, it is worth
       %pointing out that Giza achieves much lower latency than naively adopting a
       %globally consistent storage system, like CockroachDB (widely considered as open source
       %implementation of Google's Spanner).
