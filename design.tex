@@ -266,11 +266,16 @@ neither pre-accepted nor accepted value, which implies no real impact from
 contention. Giza picks its current metadata as the value and proceeds to next
 steps.
 
+% JinL: my understanding is that Azure Table's conditional update is based on etag. 
+% That is, the conditional update is performed if old_etag = cur_etag, and is rejected otehrwise. 
+% It can't perform a function to check whether {\tt highest ballot seen} and/or {\tt highest accepted ballot} 
+% is alrger. 
 Once the {\name} node picks a value, it replicates an Accept request to all the
 metadata tables. The accept request is again an atomic conditional update; it
 succeeds in writing {\tt highest accepted ballot} and {\tt highest accepted
   value} if neither {\tt highest ballot seen} and {\tt highest accepted ballot}
-is larger. As soon as a majority of Accept requests succeed, the \name node
+is larger. 
+As soon as a majority of Accept requests succeed, the \name node
 considers the corresponding metadata write completed and sends acknowledgment to
 clients. Additionally, a Commit confirmation is replicated in the background, as
 described before.
@@ -278,7 +283,7 @@ described before.
 \subsubsection{Metadata Read}
 
 To get the metadata of the \emph{latest} object version, it is insufficient for
-Giza to only read the corresponding metadata table row from its local DC. This
+\name to only read the corresponding metadata table row from its local DC. This
 is because the local DC might not be part of the majority quorum that has
 accepted the latest version. To ensure correctness, Giza needs to read the
 metadata rows from more than one DC.
