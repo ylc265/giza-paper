@@ -1,34 +1,35 @@
 \subsection{Joint Optimization of Data and Meta-data Operations}
 
-The data path of \name is straightforward: the \name node encodes the data to $k$ original
-fragments and $m$ parity fragments. $k$ and $m$ are configurable. Then the Giza node
-computes a content hash for each fragment, and uses the hash value as the key to
-write each fragment to a separate data center.
-When naively combining the data path with the earlier metadata path,
-the \name node serializes the two paths, resulting in two or more cross-DC round trips.
-To reduce latency, we optimize \name to run the data and metadata paths in parallel.
-This is potentially problematic because either the data or metadata path could fail
-while the other one succeeds.
-Below, we describe how {\em put} and {\em get} cope with this challenge and ensure end-to-end correctness.
+The data path of \name is straightforward: the \name node encodes the data to
+$k$ original fragments and $m$ parity fragments. $k$ and $m$ are configurable.
+Then the Giza node computes a content hash for each fragment, and uses the hash
+value as the key to write each fragment to a separate data center. When naively
+combining the data path with the earlier metadata path, the \name node
+serializes the two paths, resulting in two or more cross-DC round trips. To
+reduce latency, we optimize \name to run the data and metadata paths in
+parallel. This is potentially problematic because either the data or metadata
+path could fail while the other one succeeds. Below, we describe how {\em put}
+and {\em get} cope with this challenge and ensure end-to-end correctness.
 
 \comment{
 
-{\name} supports three operations: put, get and delete. All of them require a key as
-an argument to identify an object. put takes object content as an extra argument, get
-returns object content (null if non-exist) as result. A delete operation is processed
-as a special write, putting a tombstone in the object's metadata. The actual recycling
-of disk space happens at garbage collection, which will be described in ~\Cref{sec:xxxx}.
+{\name} supports three operations: put, get and delete. All of them require a
+key as an argument to identify an object. put takes object content as an extra
+argument, get returns object content (null if non-exist) as result. A delete
+operation is processed as a special write, putting a tombstone in the object's
+metadata. The actual recycling of disk space happens at garbage collection,
+which will be described in ~\Cref{sec:xxxx}.
 
 }
 
-{\bf The Put Operation:}
-After generating the coded fragments and calculating their content hashes,
-the \name node launches both the data and metadata paths in parallel.
-In the common case,
-the \name node waits for both the data and the metadata paths to finish before acknowledging clients.
-Furthermore, it replicates the Commit confirmation only after both the data and the metadata paths complete. 
-In other words, \name ensures that {\tt known committed version} only include those versions
-whose data and metadata have both been successfully committed.
+{\bf The \emph{put} Operation:} After generating the coded fragments and calculating
+their content hashes, the \name node launches both the data and metadata paths
+in parallel. In the common case, the \name node waits for both the data and the
+metadata paths to finish before acknowledging clients. Furthermore, it
+replicates the Commit confirmation only after both the data and the metadata
+paths complete. In other words, \name ensures that {\tt known committed version}
+only include those versions whose data and metadata have both been successfully
+committed.
 
 In one uncommon case, the data path succeeds, while the metadata path fails.
 Now, the fragments stored in the cloud blobs become useless.
@@ -40,7 +41,7 @@ In another uncommon case, the data path fails, but the metadata path succeeds.
 This is rather subtle, as it creates a challenging for the {\em get} operation,
 as addressed next.
 
-{\bf The Get Operation:}
+{\bf The \emph{get} Operation:}
 A naive way to perform {\em get} is to first read the latest metadata and then retrieve the coded fragments.
 To reduce latency, {\name} chooses an optimistic approach and parallelizes the metadata and the data paths.
 
@@ -73,51 +74,70 @@ as specified in {\tt known committed version}.
 
 \subsection{Deletion and Garbage Collection}
 
-Giza supports two types of deletion operation: trimming earlier versions and deleting an entire object.
-To control the size of the metadata table rows, Giza limits the number of versions for each object.
-Once the limit is reached, writing a new version automatically trims the earliest version.
+The \emph{delete} operation in \name is treated as a special update of the
+object's metadata. When receiving a delete request, \name will enter the
+metadata path writing a new version as if responding to a normal put request,
+except that it will put a flag in the metadata indicating the object is deleted.
+Another difference is that it will not issue any writes to data fragments. Upon
+future read request, when the system reads an object whose metadata has the
+deletion flag set for the highest version, it will treat the object as deleted.
 
-Deleting a specific version is processed as a special update of the object's metadata.
-\name executes the Paxos algorithm to write a garbage collection record containing
-the version $v$; any version $v'\leq v$ will be garbage collected.  
+Other than handling the users' delete requests, \name also needs to support two
+extra features regarding freeing storage space: 1) trimming earlier versions and
+2) erasing an entire object thoroughly from the storage. To control the cost of
+table and storage service, \name limits the number of versions for each object.
+Once the threshold is reached, writing a new version will trigger the garbage
+collection that trims the earliest version. After an object is deleted and no
+new writes refresh the object, the space for its metadata and data also needs to
+be recycled.
 
-Giza garbage collects and reclaims the storage space occupied by the coded fragments of the deleted version.
-\comment{
-Because {\name} keeps writing new version metadata to table service and data fragments
-to blob storage service, it needs to garbage collect on outdated versions to recycle
-storage space. Moreover, the garbage collection also needs to free the space marked as
-tombstone by the delete operation.
-}
+%Deleting a specific version is processed as a special update of the object's
+%metadata. \name executes the Paxos algorithm to write a garbage collection
+%record containing the version $v$; any version $v'\leq v$ will be garbage
+%collected.
 
-The garbage collection process includes deleting the coded fragments and
-truncating the column for the deleted version in the metadata table row.
-It follows three steps:
-1) fetch the metadata corresponding to the version to be garbage collected.
-2) delete the coded fragments in the blob storage.
-3) remove the column for the deleted version from the metadata table row.
-The second step has to occur before the third one in case that
-the garbage collection process is interrupted and the coded fragments may become ``orphans''
-without proper metadata pointing to them in the table storage.
+\name garbage collects and reclaims the storage space occupied by the coded
+fragments of the deleted version. \comment{ Because {\name} keeps writing new
+  version metadata to table service and data fragments to blob storage service,
+  it needs to garbage collect on outdated versions to recycle storage space.
+  Moreover, the garbage collection also needs to free the space marked as
+  tombstone by the delete operation. } The garbage collection process includes
+deleting the coded fragments and truncating the column for the deleted version
+in the metadata table row. It follows three steps: 1) fetch the metadata
+corresponding to the version to be garbage collected. 2) delete the coded
+fragments in the blob storage. 3) remove the column for the deleted version from
+the metadata table row. The second step has to occur before the third one in
+case that the garbage collection process is interrupted and the coded fragments
+may become ``orphans'' without proper metadata pointing to them in the table
+storage.
 
-To delete an entire object, 
-{\name} first executes Paxos to commit a tombstone as the highest version.
-Then, it deletes the coded fragments corresponding to all the versions of the object.
-Finally, it starts to delete the entire table row from the tables across all the DCs.
-This requires extra care. Otherwise if removed brutally, 
-a new {\em put} operation of the same object may lead the system into an abnormal state.
-The {\em put} operation could start at a data center where the table row is already deleted.
-The {\em put} operation would therefore assume the object never existed and choose the smallest version number.
-Committing this version number could be dangerous before the metadata table row is deleted from all the DCs,
-as this could result in conflict and ambiguity during future failure recovery.
+Reclaming all space of an deleted object requires extra care, due to possible
+contention from the \emph{put} requests. If removed brutally, a new {\em put}
+operation of the same object may lead the system into an abnormal state. For
+instance, the {\em put} operation could start at a data center where the table
+row is already deleted. The {\em put} operation will therefore assume the object
+never existed before and then choose the smallest version number. Committing
+this version number is dangerous before the metadata table row is deleted from
+all the DCs, as this may result in conflicts and ambiguity during future failure
+recovery.
 
-% start with an initial version, which could violate some of the metadata (with a higher version before the deletion) if the removing is still in process.
-Therefore, {\name} resorts to two-phase commit to delete the metadata table row.
-In the first phase, it marks the rows in all the data centers as ``prepared\_to\_delete''.
-After this any other {\em get} or {\em put} operations are temporarily disabled for this object.
-Then in the second phase, all the rows are actually removed from the table storage.
-The disadvantage of this approach is that it requires all the data centers to be online.
-Data center failure or network partition may pause the process and make the row unavailable
-(but can still continue after data center recovers or network partition heals). 
+%To delete an entire object, {\name} first executes Paxos to commit a tombstone
+%as the highest version. Then, it deletes the coded fragments corresponding to
+%all the versions of the object. Finally, it starts to delete the entire table
+%row from the tables across all the DCs.
+
+
+% start with an initial version, which could violate some of the metadata (with
+% a higher version before the deletion) if the removing is still in process.
+Therefore, {\name} resorts to a two-phase commit protocol to reclaim the space
+for the metadata table row after trimming all its previous versions. In the
+first phase, it marks the rows in all the data centers as \texttt{confined}.
+After this any other {\em get} or {\em put} operations are temporarily disabled
+for this object. Then in the second phase, all the rows are actually removed
+from the table storage. The disadvantage of this approach is obvious. It
+requires all the data centers to be online. Data center failure or network
+partition may pause the process and make the row unavailable (but can still
+continue after data center recovers or network partition heals).  
 
 
 
