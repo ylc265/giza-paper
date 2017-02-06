@@ -1,11 +1,7 @@
 \subsection{Joint Optimization of Data and Meta-data Operations}
 
-The data path of \name is straightforward: the \name node encodes the data to
-$k$ original fragments and $m$ parity fragments. $k$ and $m$ are configurable.
-Then the Giza node computes a content hash for each fragment, and uses the hash
-value as the key to write each fragment to a separate data center. When naively
-combining the data path with the earlier metadata path, the \name node
-serializes the two paths, resulting in two or more cross-DC round trips. To
+The naive implementation of \name first writes out data fragments (original and parity), 
+and then writes out metadata, resulting in two or more cross-DC round trips. To
 reduce latency, we optimize \name to run the data and metadata paths in
 parallel. This is potentially problematic because either the data or metadata
 path could fail while the other one succeeds. Below, we describe how {\em put}
@@ -18,7 +14,7 @@ key as an argument to identify an object. put takes object content as an extra
 argument, get returns object content (null if non-exist) as result. A delete
 operation is processed as a special write, putting a tombstone in the object's
 metadata. The actual recycling of disk space happens at garbage collection,
-which will be described in ~\Cref{sec:xxxx}.
+which will be described in ~\Cref{sec:garbagecollection}.
 
 }
 
@@ -33,8 +29,9 @@ committed.
 
 In one uncommon case, the data path succeeds, while the metadata path fails.
 Now, the fragments stored in the cloud blobs become useless.
-Giza deletes these fragments and reclaims storage through a cleaning process,
-which first executes Paxos to update the current version to {\em no-op}
+Giza will eventually delete these fragments and reclaim storage through a cleaning process,
+which first executes Paxos to update the current version to {\em no-op}, discover those fragments 
+as not being referenced in the metadata store, 
 and then removes the fragments from the corresponding blob stores in all the DCs.
 
 In another uncommon case, the data path fails, but the metadata path succeeds.
@@ -42,21 +39,21 @@ This is rather subtle, as it creates a challenging for the {\em get} operation,
 as addressed next.
 
 {\bf The \emph{get} Operation:}
-A naive way to perform {\em get} is to first read the latest metadata and then retrieve the coded fragments.
+A naive way to perform {\em get} is to first read the latest metadata and then retrieve the data fragments (original and parity).
 To reduce latency, {\name} chooses an optimistic approach and parallelizes the metadata and the data paths.
 
 For a {\em get} request, the {\name} node first reads from the local DC the corresponding metadata table row.
-It obtains {\tt known committed version}, as well as the names and locations of the coded fragments of the latest version.
-The \name node immediately starts reading the coded fragments from the different data centers.
+It obtains {\tt known committed version}, as well as the names and locations of the fragments of the latest version.
+The \name node immediately starts reading the fragments from the multiple data centers.
 Separately, it launches a regular metadata read to validate that the version is indeed the latest.
 If the validation fails, the \name node realizes there is a newer version.
-It in turn has to redo the data path by fetching a different set of coded fragments.
+It in turn has to redo the data path by fetching a different set of fragments.
 This results in wasted efforts in its previous data fetch.
 Such potential waste, however, only happens when there is concurrent writes on the same object,
 which is rare.
 
 Because the data and metadata paths are performed in parallel during {\em put},
-it is possible (though rare) that the coded fragments for the latest committed version
+it is possible (though rare) that the fragments for the latest committed version
 have not been written to the blob storage at the time of read.
 This happens if the metadata path in the {\em put} finishes before the data path,
 or the metadata path succeeds while the data path fails.
@@ -69,10 +66,15 @@ as specified in {\tt known committed version}.
   Hi Daniel, can you give me a few details about the hashing? e.g. hashing method,
   hashing result size, collision rate, etc.)
 }
+\sm {
+  JinL: I will suggest SHA256, the hash we have used in dedup implementation in Windows Server 2012. 
+  The hash size is 2^256, collision rate is 2^-128. 
+}
 
 }
 
 \subsection{Deletion and Garbage Collection}
+\label{sec:garbagecollection}
 
 The \emph{delete} operation in \name is treated as a special update of the
 object's metadata. When receiving a delete request, \name will enter the
@@ -83,7 +85,7 @@ future read request, when the system reads an object whose metadata has the
 deletion flag set for the highest version, it will treat the object as deleted.
 
 Other than handling the users' delete requests, \name also needs to support two
-extra features regarding freeing storage space: 1) trimming earlier versions and
+extra features managing the storage space: 1) trimming earlier versions and
 2) erasing an entire object thoroughly from the storage. To control the cost of
 table and storage service, \name limits the number of versions for each object.
 Once the threshold is reached, writing a new version will trigger the garbage
@@ -96,29 +98,47 @@ be recycled.
 %record containing the version $v$; any version $v'\leq v$ will be garbage
 %collected.
 
-\name garbage collects and reclaims the storage space occupied by the coded
-fragments of the deleted version. \comment{ Because {\name} keeps writing new
+\name garbage collects and reclaims the blob storage occupied by the 
+fragments of the deleted version. 
+\comment{ Because {\name} keeps writing new
   version metadata to table service and data fragments to blob storage service,
   it needs to garbage collect on outdated versions to recycle storage space.
   Moreover, the garbage collection also needs to free the space marked as
-  tombstone by the delete operation. } The garbage collection process includes
-deleting the coded fragments and truncating the column for the deleted version
-in the metadata table row. It follows three steps: 1) fetch the metadata
-corresponding to the version to be garbage collected. 2) delete the coded
-fragments in the blob storage. 3) remove the column for the deleted version from
+  tombstone by the delete operation. 
+\sm {
+JinL: I believe that \name needs to do reference counting on blob storage to do garbage collection. 
+If data path succeeds, metadata path completely fails, and the node writing data died at that moment, 
+there is no way to remove the written fragments other than observe that those fragments 
+have a reference count of zero. 
+
+If we accept that we will need to do reference counting on the blob store, then the garbage collection on blob store 
+can be separated into two processes: 1) reducing ref count when the fragments are deleted in the metadata table row, 
+and 2) deleting fragments when they are no longer referenced. 1) doesn't need to be accurate, as any incorrect ref count
+will be hashed out when we running an algorithm to detect fragments that are no longer referenced. 
+
+Please comment on your thoughts of the process. If we decide to include reference counting, we need to add a session on the blob store on doing distributed ref counting. 
+
+The trade off is that many of the special care on the metadata below will be no longer necessary. 
+} 
+} 
+The garbage collection process includes
+deleting the fragments from the blob storage and truncating the columns of the deleted version
+from the metadata table row. It follows three steps: 1) fetch the metadata
+corresponding to the version to be garbage collected. 2) delete the 
+fragments in the blob storage. 3) remove the columns of the deleted version from
 the metadata table row. The second step has to occur before the third one in
-case that the garbage collection process is interrupted and the coded fragments
+case that the garbage collection process is interrupted and the fragments
 may become ``orphans'' without proper metadata pointing to them in the table
 storage.
 
-Reclaming all space of an deleted object requires extra care, due to possible
-contention from the \emph{put} requests. If removed brutally, a new {\em put}
+Removing table row of the metadata of an deleted object requires extra care, due to possible
+contention of the \emph{delete} request from an additional \emph{put} requests. If removed brutally, a new {\em put}
 operation of the same object may lead the system into an abnormal state. For
 instance, the {\em put} operation could start at a data center where the table
-row is already deleted. The {\em put} operation will therefore assume the object
+row has already been deleted. The {\em put} operation will therefore assume that the object
 never existed before and then choose the smallest version number. Committing
-this version number is dangerous before the metadata table row is deleted from
-all the DCs, as this may result in conflicts and ambiguity during future failure
+this version number is dangerous before the metadata table row has been deleted from
+\emph{all} the DCs, as this may result in conflicts and ambiguity during future failure
 recovery.
 
 %To delete an entire object, {\name} first executes Paxos to commit a tombstone
@@ -129,8 +149,8 @@ recovery.
 
 % start with an initial version, which could violate some of the metadata (with
 % a higher version before the deletion) if the removing is still in process.
-Therefore, {\name} resorts to a two-phase commit protocol to reclaim the space
-for the metadata table row after trimming all its previous versions. In the
+Therefore, {\name} resorts to a two-phase commit protocol to remove the metadata table row after 
+trimming all its previous versions. In the
 first phase, it marks the rows in all the data centers as \texttt{confined}.
 After this any other {\em get} or {\em put} operations are temporarily disabled
 for this object. Then in the second phase, all the rows are actually removed
@@ -138,6 +158,13 @@ from the table storage. The disadvantage of this approach is obvious. It
 requires all the data centers to be online. Data center failure or network
 partition may pause the process and make the row unavailable (but can still
 continue after data center recovers or network partition heals).  
+
+\comment{ 
+\sm {
+The current implementation of the garbage collection operation will increase the quorem size to include all DCs when
+we are doing a delete followed by a put put operation. If one of the DC is down, the operation will be blocked until the DC recovers. This is problematic. 
+}
+}
 
 
 
