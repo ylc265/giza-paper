@@ -18,7 +18,7 @@ World-6-1 & 6 + 1 & US(3/1), EU(2/1), JP(2/1) & 241 ms\\
 \end{figure}
 
 \subsection{Experimental Setup}
-We run experiments using four configurations: US-2-1, World-2-1, US-6-1, and World-6-1. Figure~\ref{fig:dcconfig} describes the data centers participating in each configuration, and the max ping latency between the DCs. Unless explicitly pointed out, all experiments erasure code objects of 4MB, the dominating size in our target workloads.
+We run experiments using four configurations: US-2-1, World-2-1, US-6-1, and World-6-1. Figure~\ref{fig:dcconfig} describes the data centers participating in each configuration, and the max ping latency between the DCs. Unless explicitly stated, all experiments erasure code objects of 4MB, the dominating size in our target workloads.
 
 We also compare Giza with CockroachDB~\cite{cockroachdb}, an open source implementation of Google spanner. Our CockroachDB experiments use the US-2-1 configuration as world wide replication is not supported at the time. In every data center, we run three CockroachDB instances for local DC replication. Each CockroachDB writes to a dedicated HDD with no memory caching. We have configured the CockroachDB instances following the recommended production setting by the CockroachDB developers. For example, we run NTP to synchronize clocks of the different CockroachDB instances.
 
