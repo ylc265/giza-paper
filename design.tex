@@ -17,91 +17,66 @@ the data model, and the protocols for the {\em put}, {\em get} and {\em delete} 
 centers. It stores mutable, versioned objects. Figure~\ref{fig:arch} shows the
 architecture of \name. To store a \name object through a {\em put} operation,
 there is a data operation, and a metadata operation, both are carried out
-simultanenously to improve the performance. On the data path, \name splits and
-encodes the object into data and parity fragments. Each fragment is uniquely
-named by its content hash and stored in a different DC. The design also ensures
-that if there are multiple objects in a \name account, only one copy of the
-object needs to be stored, thus achieves deduplication saving within the DC. It
-is possible that the exact same fragments may be stored at different DC. \name
-doesn't attempt to detect duplicate fragments across DC for performance concern.
-Each Update to the object creates a new versions of the object. The version
-numbers and the hashes of the coded fragments in each version constitutes the
+simultaneously to improve the performance. On the data path, \name splits and
+encodes the object into data and parity fragments.
+Each coded fragment is named by a unique identifier and stored in a different DC.
+Each update to the object creates a new version. The version
+numbers and the coded fragment IDs in each version constitutes the
 metadata of the object. On the metadata path, \name replicates the metadata
 across the data centers.
 
-We implement \name on top of an existing cloud storage infrastructure. This
-provides two advantages. First, doing so allows the rapid development of \name
+\name is implemented on top of the existing Azure Storage infrastructure.
+It stores the coded fragments in Azure Blob storage, 
+and stores the metadata in Azure Table storage.
+This provides two advantages. First, doing so allows the rapid development of \name
 by re-using mature, deployed and well-tested systems. Second, it simplifies the
-failure recovery and the deployment of \name: the \name nodes are completely
-stateless and can be readily integrated with the rest of the stateless cloud
-storage front-ends.
-
-%Existing cloud storage systems have redundancy within a single data center, but are not geo-replicated.  Thus, \name must explicitly provide cross data center redundancy through coding and replication.
-% To write the object,
-% {\name} stores the coded fragments in different data centers in cloud blob stores,
-% such as Azure Blob, or AWS S3.
-% Additionally, \name replicates the object's metadata across multiple data centers 
-% and stores the metadata in cloud tables, such as Azure Table, or AWS DynamoDB. 
-\name store data and coded fragments in cloud blob store, e.g., Azure Blob, and store the metadata in cloud table, 
-e.g., Azure Table. 
-The total number of the data plus coded fragments is equal to the number of data centers
-storing the data objects, and is configured during the account setup depending on the user desired tradeoff on
-durability vs. cost.
-%The number of data centers to replicate the metadata is fixed at 3.
-
-%blob service as building blocks, to store metadata and data respectively. This evolutional
-%design allows {\name} to minimize footprint of new code. In fact, {\name} merely needs to replace the previous front-end
-%module. With {\name} deployed, the user request comes in to the new frontend, where the new
-%{\name} service will translate the user requests into a few metadata operations and data operations.
-%
-%In {\name}, both metadata and data are synchronously duplicated across different
-%datacenters in order to tolerate datacenter failures. What is different between metadata
-%and data is, metadata is fully replicated across a (usually smaller) set of datacenters using
-%a tailored Fast-Paxos algorithm, persistent in the table service in each datacenter, thus
-%tolerating a minority of failures; On the other hand, data in user request is encoded to
-%a configurable number of fragments and shipped to a (usually larger) set of datacenters,
-%persistent in the blob storage service. We refer the former as metadata path and the latter
-%as data path.
-
+failure recovery and deployment: \name runs on stateless nodes and can be readily
+integrated with the rest of the stateless cloud storage front-ends.
 
 \paragraph{Technical challenges}
-% JinL: should we need to discuss ref counting & garbage collection when a fragment is no longer referenced? 
-% Or is that considered well understood in the industry that we don't need to dicuss? 
-In \name, each fragment (data or coded) is uniquely indexed by its content hashes.
-As a result, each fragment is immutable, which makes the data path straightforward and simplified. 
+In \name, each coded fragment is named by a unique identifier.
+As a result, fragments are immutable, which makes the data path straightforward and simplified. 
 
-The metadata path is more tricky, with the following three main technical challenges:
+The metadata path is more tricky, facing three main technical challenges:
 \begin{enumerate}
 
-\item {\it Building a strongly consistent, geo-replicated metadata storage out of existing 
-single-DC cloud tables.}
-There are prototype systems, such as Cassandra,
-that offer strongly consistent, geo-replicated storage systems.
-Giza chooses not to adopt the existing solutions because
-1) it is desirable to make \name nodes stateless and keep all data and metadata
-in existing well-tested cloud storage infrastructure;
-2) it is preferable to implement protocols best suited for our targeted workloads,
-so as to achieve optimal latency.
-Indeed, Giza ensures strong consistency by implementing the Paxos consensus protocol.
-The trick is to implement Paxos using existing cloud table APIs and achieve 
-optimal latency in the cross-DC setting.
+\item {\it Building a strongly consistent, 
+geo-replicated metadata store out of existing single-DC cloud tables.}
+\name runs on stateless nodes and leverages existing well-tested
+cloud storage infrastructure to persist all data and metadata.
+This architecture simplifies development, deployment and operation,
+which, to our best knowledge, is completely different from other systems
+operating stateful servers (e.g., Cassandra, Megastore, Spanner, etc.).
+In addition, the cloud tables only guarantee consistency within single data center.
+Giza needs to orchestrate a collection of individual cloud tables across multiple data centers
+and achieve strong consistency globally.
 
 \item {\it Jointly optimizing the data and metadata paths to achieve a single
-  cross-DC round trip for read/write operations.} A naive approach would execute
-  the data and metadata path sequentially: first write out the blob, completes
-  the data path, and then starts on the metadata path. Doing so guarantees that
+  cross-DC round trip for read/write operations.}
+Most existing systems employ a primary-based approach,
+which incurs extra cross-DC round trip for secondary data centers.
+\name, on the other hand, is leader-less and
+combines the data and metadata path in such a way that it achieves
+	single cross-DC round trip for both read and write from any data center.
+	\comment{
+	A naive approach would execute
+  the data and metadata path sequentially: 
+	first writes the coded fragments and completes the data path, 
+	and then completes the metadata path. Doing so guarantees that
   the metadata written and externally visible always matches with the stored
   data. However, each write operation will require at least two cross-DC round
   trips. Similarly, a naive approach for read operation would take the first
   cross-DC round trip to retrieve the metadata and then the second round trip to
-  retrieve the data. We want to combine the data and metadata path of \name to
-  achieve a single cross-DC round trip for both read and write.
+  retrieve the data. \name combines the data and metadata path and achieves
+	a single cross-DC round trip for both read and write.
+	}
 
 \item {\it Performing garbage collection efficiently and promptly.} When a data
   object is deleted, or its old versions are garbage collected, \name must
   remove obsolete fragments and/or metadata from the underlying cloud blob
-  storage and cloud table. \name must also remove fragments generated by a
-  failed data path write. Both operations are non-trivial because \name's
+	and table storage.
+	%\name must also remove fragments generated by a failed data path write.
+	This turns out non-trivial because \name's
   garbage collection mechanism must be able to handle data center failures while
   ensuring data consistency and durability.
 
