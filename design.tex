@@ -44,8 +44,8 @@ The metadata path is more tricky, facing three main technical challenges:
 geo-replicated metadata store out of existing single-DC cloud tables.}
 \name runs on stateless nodes and leverages existing well-tested
 cloud storage infrastructure to persist all data and metadata.
-This architecture simplifies development, deployment and operation,
-which, to our best knowledge, is completely different from other systems
+The architecture simplifies development, deployment and operation.
+This makes Giza quite different from other systems
 operating stateful servers (e.g., Cassandra, Megastore, Spanner, etc.).
 In addition, the cloud tables only guarantee consistency within single data center.
 Giza needs to orchestrate a collection of individual cloud tables across multiple data centers
