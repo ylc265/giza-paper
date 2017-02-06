@@ -1,11 +1,11 @@
 \section{Introduction}
 
-Microsoft Azure Storage is a global cloud storage system with a footprint in 38 geographic regions~\cite{}. It provides customers the ability to store seemingly limitless amounts of data. Since 2010, Azure Storage has grown from tens of petabytes to many exabytes, with many tens of trillions of objects stored~\cite{}.
+Microsoft Azure Storage is a global cloud storage system with a footprint in 38 geographic regions~\cite{bib:azureregions}. It provides customers the ability to store seemingly limitless amounts of data. Since 2010, Azure Storage has grown from tens of petabytes to many exabytes, with many tens of trillions of objects stored~\cite{greenberg2015sdn}.
 
 %\comment{https://azure.microsoft.com/en-us/regions/}
 %\comment{GREENBERG, A. SDN for the Cloud. Keynote in the 2015 ACM Conference on Special Interest Group on Data Communication, 2015.}
 
-To protect customer data against disk, node and rack failure within data centers, Azure Storage applies Local Reconstruction Coding (LRC)~\cite{} to ensure high availability and durability. LRC significantly reduces storage cost over the conventional scheme of keeping 3 full copies.
+To protect customer data against disk, node and rack failure within data centers, Azure Storage applies Local Reconstruction Coding (LRC)~\cite{huang2012erasure} to ensure high availability and durability. LRC significantly reduces storage cost over the conventional scheme of keeping 3 full copies.
 
 To further protect customer data against catastrophic failure of entire data centers (say due to earthquake, tsunami, etc.), Azure Storage optionally replicates customer data to secondary data centers hundreds of miles away. Many customers choose the geo-replication option. These customers are migrating their entire IT infrastructure to the cloud and taking advantage of the global footprint of Azure. It is essential to them that even in the unlikely, albeit inevitable, event of catastrophic data center failure, their data remain durable.
 
