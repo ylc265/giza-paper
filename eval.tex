@@ -83,7 +83,9 @@ Figure~\ref{fig:eval_giza_get} shows Giza's {\em get} performance comparison. Th
 
 \name offers customers the flexibility to choose the set of data centers, as well as the erasure coding parameters (e.g., the number of data fragments $k$). 
 %As the main goal of Giza is storage cost reduction, we want to encourage erasure encoding with more numbers of data fragments.
-It turns out that increasing $k$ not only reduces storage overhead, but also overall latency. This is because the latency in Giza is often dominated by the data path. Erasure coding with a larger $k$ results in smaller fragments and fewer bytes stored in each DC's blob storage. This reduces the data path latency. Figure~\ref{fig:eval_giza_put_four} and Figure~\ref{fig:eval_giza_get_four} illustrate this in our four configurations with 4MB data, with all requests generated from US-Central. 
+It turns out that increasing $k$ not only reduces storage overhead, but also overall latency. This is because the latency in Giza is often dominated by the data path. Erasure coding with a larger $k$ results in smaller fragments and fewer bytes stored in each DC's blob storage. This reduces the data path latency and in turn the overall latency.
+
+Figure~\ref{fig:eval_giza_put_four} and Figure~\ref{fig:eval_giza_get_four} present the latency impact given different Giza footprints and erasure coding parameters. All the requests are generated from US-Central. Comparing US-2-1 to US-6-1 (World-2-1 to World-6-1), it is clear that increasing $k$ from 2 to 6 reduces the latency for both {\em put} and {\em get}.
 %This improvement of performance occurs when the max distance between the data centers in the higher configuration group (7 data centers) is not more than that in the lower configuration group (3 data centers).
 
 
@@ -95,8 +97,8 @@ system.  Hence, we implemented Giza on top of CockroachDB using its transaction 
 To do this, we create four different tables in CockroachDB: one metadata table
 and three data tables (for storing coded fragments). The metadata table is
 replicated across all three DCs. Each of the data tables is replicated three
-times within its respective data center.  This is to match the local
-replication of Azure storage within individual DCs.  
+times within its respective data center. This is to match the local
+replication of Azure Table within individual DCs.  
 
 We implement Giza's {\em put} as a transaction consisting of storing each coded
 fragment at the corresponding data table and storing the metadata information
@@ -120,9 +122,9 @@ of CockroachDB.
 
 Giza is optimized for low contention workloads. So, it employs a simple strategy for handling contention. In the event of contention, a Giza node that fails the fast round immediately switches to a classic round. In addition, Giza implements exponential back-off with the latency starting from the median cross-DC latency whenever prepare phase or accept phase further fails in the classic round.
 
-Figure~\ref{fig:gizacontentionbar} compares the performance of Giza driven by One Drive's trace to that with no contention at all. In One Drive's trace, we observe that only $0.5\%$ of updates are concurrent (within 1 second interval). Hence, it is not surprising that the performance of Giza driven by One Drive's trace is almost identical to that with no contention.
+Figure~\ref{fig:gizacontentionbar} compares the performance of Giza driven by the OneDrive trace to that with no contention at all. In the OneDrive trace, we observe that only $0.5\%$ of updates are concurrent (within 1 second interval). Hence, it is not surprising that the performance of Giza driven by the OneDrive trace is almost identical to that with no contention.
 
-Figure~\ref{fig:gizacontentionbar} also presents the latency results of adversary contention. In this case, two Giza nodes within the same data center are issuing back-to-back concurrent puts to update the same object. This is definitely not the scenario Giza targets. We include the results for the interest of our readers.
+Figure~\ref{fig:gizacontentionbar} also presents the latency results of {\em adversary} contention. In this case, two Giza nodes within the same data center are issuing back-to-back concurrent puts to update the same object. This is definitely not the scenario that Giza targets. We include the results merely for the interest of our readers.
 
 %In most cases, both the fast rounds fail. In this scenario, one of the the Giza node will fail either at the prepare phase or the accept phase. In the former case, the expected latency is 6 RTT: Fast round -> Prepare Phase -> Back off -> Prepare Phase -> Accept Phase -> Fast Round. In the latter case, the expected latency is 7 RTT: Fast Round -> Prepare Phase -> Accept Phase -> Back off -> Prepare Phase -> Accept Phase -> Fast Round. This is consistent with the median contention latency.
 
