@@ -1,7 +1,7 @@
 \section{The Case for Giza}
 \label{sec:motivation}
 
-Using Microsoft OneDrive service as an example, this section presents the characteristics representative of Giza's workloads.
+Using Microsoft OneDrive as an example, this section presents the characteristics representative of Giza's workloads.
 
 \subsection{Microsoft OneDrive Characteristics}
 
@@ -30,7 +30,7 @@ Using Microsoft OneDrive service as an example, this section presents the charac
 
 {\bf Large Objects Dominate:} The size of the objects varies significantly, ranging from Kilobytes to tens of Gigabytes. While the number of small objects vastly exceeds that of large objects, the overall storage consumption is mostly due to large objects. Figure~\ref{fig:object_size-storage_capacity} presents the cumulative distribution of storage capacity consumption in terms of object size. We observe that less than $0.9\%$ of the total storage capacity is occupied by objects smaller than 4MB. This suggests that, to optimize storage cost, it is sufficient for Giza to focus on objects of 4MB and larger~\footnote{Objects of tens of Gigabytes are divided into 4MB chunks before storing in cloud storage back-end.}. Objects smaller than 4MB can simply use the existing geo-replication option. This design choice reduces the overhead associated with erasure coding of small objects (including meta-data for the smaller object). As a result, all following analysis filter out objects smaller than 4MB.
 
-{\bf Object Temperature Drops Fast:} A common usage scenario of OneDrive is file sharing. Objects stored in the cloud are often shared across multiple devices, as well as among multiple users. Therefore, it is typical to observe reads soon after the objects are created. To this end, Figure~\ref{fig:write_read_gap-bytes_read} presents the cumulative distribution of bytes read in terms of object age when the reads occur~\footnote{The analysis focuses on all the objects created during the three-month period. Hence, the object age is capped at three months.}. It is worth pointing out that $47\%$ of the bytes read occurred in the same day of object creation, $87\%$ occurred within the same week, and merely less $2\%$ occurred beyond one month. Since the temperature of the objects drops at a fast space, caching the objects for a short period of time can satisfy most of the reads (more below). 
+{\bf Object Temperature Drops Fast:} A common usage scenario of OneDrive is file sharing. Objects stored in the cloud are often shared across multiple devices, as well as among multiple users. Therefore, it is typical to observe reads soon after the objects are created. To this end, Figure~\ref{fig:write_read_gap-bytes_read} presents the cumulative distribution of bytes read in terms of object age when the reads occur~\footnote{The analysis focuses on all the objects created during the three-month period. Hence, the object age is capped at three months.}. It is worth pointing out that $47\%$ of the bytes read occurred in the same day of object creation, $87\%$ occurred within the same week, and merely less $2\%$ occurred beyond one month. Since the temperature of the objects drops quickly, caching objects can be very effective (more below). 
 
 \begin{table}[h]
 \footnotesize
