@@ -1,4 +1,4 @@
-set terminal postscript eps size 3.5,2.62 enhanced color font 'Helvetica,20' linewidth 2
+set terminal postscript eps size 3.5,2.62 enhanced color font 'Helvetica,24' linewidth 2
 #set output 'object_size-storage_capacity.eps'
 #set output '|gs -sDEVICE=pdfwrite -sOutputFile=object_size-storage_capacity.pdf -dBATCH -dNOPAUSE  -f -'
 set output '|gs -sDEVICE=pdfwrite -sOutputFile=- -dBATCH -dNOPAUSE  -f - | pdfcrop -margins 10 - object_size-storage_capacity.pdf'

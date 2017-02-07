@@ -1,4 +1,4 @@
-set terminal postscript eps size 3.5,2.62 enhanced color font 'Helvetica,20' linewidth 2
+set terminal postscript eps size 3.5,2.62 enhanced color font 'Helvetica,24' linewidth 2
 #set output 'object_size-storage_capacity.eps'
 #set output '|gs -sDEVICE=pdfwrite -sOutputFile=object_size-storage_capacity.pdf -dBATCH -dNOPAUSE  -f -'
 set output '|gs -sDEVICE=pdfwrite -sOutputFile=- -dBATCH -dNOPAUSE  -f - | pdfcrop -margins 10 - write_read_gap-bytes_read.pdf'
@@ -17,9 +17,9 @@ set xtics ("Day" 1, "2" 2 1, "4" 4 1, "Week" 8, "2" 15 1, "Month" 30, "2" 60 1, 
 set boxwidth 0.1 absolute
 #set border linewidth 2
 
-set label '2' at 2,-0.05 center font ",16"
-set label '4' at 4,-0.05 center font ",16"
-set label '2' at 15,-0.05 center font ",16"
+set label '2' at 2,-0.05 center font ",20"
+set label '4' at 4,-0.05 center font ",20"
+set label '2' at 15,-0.05 center font ",20"
 #set label '2' at 60,-0.05 center font ",16"
 
 set style line 1 lt 1 lc rgb "#A00000" lw 2 pt 7 ps 1.5
