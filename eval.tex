@@ -1,6 +1,6 @@
 \section{Evaluation}
 
-For evaluation, we deploy Giza on top of the Microsoft Azure platform across 11 data centers (7 in North America, 2 in Europe and 2 in Asia). Giza nodes are Azure virtual machines with 16 cores, 56 GB of RAM, and Gigabit Ethernet. As describe in Section~\ref{sec:design}, all the Giza nodes are stateless. For each Giza storage account, a locally redundant Azure Blob and Table storage account is created in every DC. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write data objects.
+For evaluation, we deploy Giza on top of the Microsoft Azure platform across 11 data centers (7 in North America, 2 in Europe and 2 in Asia). Giza nodes are Azure virtual machines with 16 cores, 56 GB of RAM, and Gigabit Ethernet. As describe in Section~\ref{sec:design}, all the Giza nodes are stateless. For each Giza storage account, a locally redundant Azure Blob and Table storage account is created in every DC. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write objects.
 
 \input{exp-setup}
 
@@ -50,7 +50,7 @@ Figure~\ref{fig:eval_giza_put} shows the \name overall {\em put} latency for 4MB
 
 The results show that \name's performance beats the other two alternatives in the common case and has closest
 latency to the baseline. The median latency of \name's {\em put} is 374 ms, which is only 30 ms
-higher than the baseline. This is due to the latency of erasure coding 4mb data. On the other hand, the serial classic paxos version takes 
+higher than the baseline. This is due to the latency of erasure coding 4MB data. On the other hand, the serial classic paxos version takes 
 852 ms, and the serial fast paxos version takes 598 ms. In summary, the latency cost for tolerating data center failure with Giza is a little more than 3 time that of local replication.
 
 \subsubsection{Giza {\em Get} Latency}
@@ -81,7 +81,10 @@ Figure~\ref{fig:eval_giza_get} shows Giza's {\em get} performance comparison. Th
 
 \input{fig_four}
 
-\name offers customers the flexibility to choose the set of data centers, as well as the erasure coding schemes. As the main goal of Giza is storage cost reduction, we want to encourage erasure encoding with more numbers of data fragments. Giza’s operation latency is determined by the max of the data path and the metadata path.  Since the data path is more often the dominant latency, erasure coding with higher number of data fragments can actually improve latency performance. This is because more data fragments means that less bytes are sent to each storage, reducing the overall data path latency. Figure~\ref{fig:eval_giza_put_four} and  Figure~\ref{fig:eval_giza_get_four} illustrate this in our four configurations with 4MB data, with all requests generated from US-Central. This improvement of performance occurs when the max distance between the data centers in the higher configuration group (7 data centers) is not more than that in the lower configuration group (3 data centers).
+\name offers customers the flexibility to choose the set of data centers, as well as the erasure coding parameters (e.g., the number of data fragments $k$). 
+%As the main goal of Giza is storage cost reduction, we want to encourage erasure encoding with more numbers of data fragments.
+It turns out that increasing $k$ not only reduces storage overhead, but also overall latency. This is because the latency in Giza is often dominated by the data path. Erasure coding with a larger $k$ results in smaller fragments and fewer bytes stored in each DC's blob storage. This reduces the data path latency. Figure~\ref{fig:eval_giza_put_four} and Figure~\ref{fig:eval_giza_get_four} illustrate this in our four configurations with 4MB data, with all requests generated from US-Central. 
+%This improvement of performance occurs when the max distance between the data centers in the higher configuration group (7 data centers) is not more than that in the lower configuration group (3 data centers).
 
 
 \subsection{Comparing Giza with CockroachDB}
