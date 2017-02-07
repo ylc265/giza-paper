@@ -125,7 +125,7 @@
 %%% Set these variables appropriately
 %%%
 %% Note:  Authors is hardcoded below, this line only used for the PDF info
-\newcommand{\AUTHORS}{Paper \#260}
+\newcommand{\AUTHORS}{Yu Lin Chen, Shuai Mu, Jinyang Li, Cheng Huang, Jin Li, Aaron Ogus, Douglas Phillips}
 %\newcommand{\TITLE}{JANUS: Jesus! Another traNsaction and consensUS protocol}
 %\newcommand{\TITLE}{Unifying Concurrency Control and Consensus for More Commits and Lower Latency}
 \newcommand{\TITLE}{Giza: Erasure Coding Objects across Global Data Centers}
@@ -161,7 +161,7 @@
 \usepackage{ifthen}
 \ifthenelse{\equal{\PAGENUMBERS}{yes}}{%
   \usepackage[nohead,
-            left=0.75in,right=0.75in,top=1.0in,
+            left=1in,right=1in,top=1.0in,
             footskip=0.5in,bottom=1in,     % Room for page numbers
             columnsep=0.33in
             ]{geometry}
@@ -407,7 +407,9 @@ Copyright 200X ACM X-XXXXX-XX-X/XX/XX ...\$5.00}
 
 \date{}
 \title{\vspace{-2ex} \textbf{\TITLE}}
-\author{{\large \AUTHORS}}%\\
+\author{{\large Yu Lin Chen$^\star$$^\dag$, Shuai Mu$^\star$, Jinyang Li$^\star$, Cheng Huang$^\dag$, Jin Li$^\dag$, Aaron Ogus$^\dag$, Douglas Phillips$^\dag$}\\
+\textit{$^\star$New York University, $^\dag$Microsoft Corporation}
+}%\\
 %{\em Affiliations}}
 
 % This needs to be the last thing before \begin{document}

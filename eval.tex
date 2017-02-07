@@ -1,17 +1,37 @@
 \section{Evaluation}
 
-For evaluation, we deploy Giza on top of the Microsoft Azure platform across 11 data centers (7 in North America, 2 in Europe and 2 in Asia). Giza nodes are Azure virtual machines with 16 cores, 56 GB of RAM, and Gigabit Ethernet. As describe in Section~\ref{sec:design}, all the Giza nodes are stateless. For each Giza storage account, a locally redundant Azure Blob and Table storage account is created in every DC. Upon receiving {\em get} or {\em put} requests, the Giza nodes execute the data and the metadata paths to read or write objects.
+For evaluation, we deploy Giza on top of the Microsoft Azure platform across 11
+data centers (7 in North America, 2 in Europe and 2 in Asia). Giza nodes are
+Azure virtual machines with 16 cores, 56 GB of RAM, and Gigabit Ethernet. As
+describe in Section~\ref{sec:design}, all the Giza nodes are stateless. For each
+Giza storage account, a locally redundant Azure Blob and Table storage account
+is created in every DC. Upon receiving {\em get} or {\em put} requests, the Giza
+nodes execute the data and the metadata paths to read or write objects.
 
 \input{exp-setup}
 
 \subsection{Metadata Latency}
+\input{fig_metadata}
 
-We implement Giza's metadata path with both Classic and Fast Paxos. Here, we compare the performance of the two algorithms and examine their effects on Giza's metadata path latency. Figure~\ref{fig:metadata} presents the metadata latencies and breakdowns for both US-2-1 and World-2-1 configurations. The results include running proposers in each of the DCs.
+We implement Giza's metadata path with both Classic and Fast Paxos. Here, we
+compare the performance of the two algorithms and examine their effects on
+Giza's metadata path latency. Figure~\ref{fig:metadata} presents the metadata
+latencies and breakdowns for both US-2-1 and World-2-1 configurations. The
+results include running proposers in each of the DCs.
 
-The metadata latency consists of three parts: query version latency, transfer latency, and table latency.
-The query version latency is determined by reading the possible highest version from the proposer’s local table. This request is not part of the concensus protocol and is the same for both Fast and Classic Paxos.
-The transfer latency is the amount of time spent on network communication between the proposer and the furthest Giza proxy in a Paxos quorum. Here, the latency of Classic Paxos, which incurs two cross-DC round trips, is not strictly twice as much as the latency of Fast Paxos. This is because the Classic Paxos quorum is smaller than the Fast Paxos quorum. As a result, the distance between the proposer and the {\em furthest} proxy is smaller in a Classic Paxos quorum.
-The table latency is the latency for a Giza proxy to conditionally update its local DC table. Since Classic Paxos requires two rounds and hence two table updates, its table latency is twice that of Fast Paxos.
+The metadata latency consists of three parts: query version latency, transfer
+latency, and table latency. The query version latency is determined by reading
+the possible highest version from the proposer’s local table. This request is
+not part of the concensus protocol and is the same for both Fast and Classic
+Paxos. The transfer latency is the amount of time spent on network communication
+between the proposer and the furthest Giza proxy in a Paxos quorum. Here, the
+latency of Classic Paxos, which incurs two cross-DC round trips, is not strictly
+twice as much as the latency of Fast Paxos. This is because the Classic Paxos
+quorum is smaller than the Fast Paxos quorum. As a result, the distance between
+the proposer and the {\em furthest} proxy is smaller in a Classic Paxos quorum.
+The table latency is the latency for a Giza proxy to conditionally update its
+local DC table. Since Classic Paxos requires two rounds and hence two table
+updates, its table latency is twice that of Fast Paxos.
 
 %The metadata latency is first affected by the number of cross-DC round trips the Paxos algorithms require. Classic Paxos takes 2 cross-DC round trips and Fast Paxos only 1 round trip. The latency of single round trip consists of two parts: 1) transfer latency, which is the latency to relay the metadata request to a proxy Giza node in a remote DC; and 2) table latency, which is the latency to conditionally update the table locally in the remote DC.
 
@@ -26,36 +46,68 @@ The table latency is the latency for a Giza proxy to conditionally update its lo
 %
 %The performance of the metadata path is primarily determined by the request latency between the coordinator and the table storage of the furthest data center in the quorum. Each request to a remote table storage is broken down into two parts: VM to VM latency and VM to local Azure storage latency. From our previous analysis, the write latency from a VM to its local Azure storage is around 60 ms. The VM to VM latency is determined by the location of the data centers and can range from 20 ms (us central to us south central) to 240 ms (east Japan to north Europe). Figure~\ref{fig:metadata} illustrates the latency difference between the two Paxos schemes.
 
-For the US-2-1 configuration, we observe that the metadata latency is dominated by table latency. In this case, Fast Paxos is much faster than Classic Paxos, regardless of the proposer's location.
+For the US-2-1 configuration, we observe that the metadata latency is dominated
+by table latency. In this case, Fast Paxos is much faster than Classic Paxos,
+regardless of the proposer's location.
 
-For the World-2-1 configuration, transfer latency becomes a substantial part of the overall metadata latency. In this case, despite of taking two cross-DC round trips, the Classic Paxos implementation can have lower transfer latency. Nevertheless, the table latency of Classic Paxos is still twice that of Fast Paxos. As a result, the Fast Paxos implementation has lower latency, regardless of the proposer's location.
+For the World-2-1 configuration, transfer latency becomes a substantial part of
+the overall metadata latency. In this case, despite of taking two cross-DC round
+trips, the Classic Paxos implementation can have lower transfer latency.
+Nevertheless, the table latency of Classic Paxos is still twice that of Fast
+Paxos. As a result, the Fast Paxos implementation has lower latency, regardless
+of the proposer's location.
 
 %In addition, if the max distance between the data centers in a fast quorum is close to that in a classic quorum, the latency of the Fast Paxos metadata path is half of that of the Classic Paxos metadata path. In certain scenarios, it is possible for Classic Paxos to achieve lower latency than Fast Paxos. While we didn’t observe this in our two configurations, we see that if we start the request from North Europe in the 2-1 world configuration, the latencies are almost the same. This is because a Fast Paxos round requires a bigger quorum response and in this case, a fast quorum consists of North Europe, US, and East Japan. The VM to VM latency between North Europe and East Japan is 240 ms while the VM to VM latency between North Europe and US is only 102 ms. Hence the max distance between data centers in the classic quorum (US and North Europe) is less than half of that of the fast quorum. The scenario in which the Classic Paxos scheme outperforms the Fast Paxos scheme is:
 %\[max\_dist(F) > 2 * max\_dist(Q) + \textrm{extra table access}
 %\]
 %where F is the fast quorum size and Q is the classic quorum size.
-\input{fig_metadata}
 
 
 \subsection{\name Latency}
 
-The design of Giza went through multiple iterations and this section illustrates the performance gain in latency for each iteration. For the interest of space, we focus on the World-2-1 configuration.
+The design of Giza went through multiple iterations and this section illustrates
+the performance gain in latency for each iteration. For the interest of space,
+we focus on the World-2-1 configuration.
 %where US Central generates all requests as representative of the performance gain seen in other configurations.
 
 \subsubsection{Giza {\em Put} Latency}
 %\subsubsection{Giza Latency}
 \input{fig_lat}
 
-Figure~\ref{fig:eval_giza_put} shows the \name overall {\em put} latency for 4MB data. We compare Giza with its two previous iterations where the metadata path is not parallelized with the data path. In the first iteration, Giza runs the data path first. After completing the data path, Giza runs the metadata path with the Classic Paxos implementation. In the second iteration, we replaced Classic Paxos with Fast Paxos, improving latency performance. Giza parallelizes metadata path with data path, which can results in extra metadata or data clean up if either path fails to complete. However, the performance gain is significant. We also included a baseline which is the time it takes a proposing data center to issue a blob store request to the farthest data center in the quorum. Finally, we include the latency for storing the 4MB data directly to Azure storage, which is locally replicated.
+Figure~\ref{fig:eval_giza_put} shows the \name overall {\em put} latency for 4MB
+data. We compare Giza with its two previous iterations where the metadata path
+is not parallelized with the data path. In the first iteration, Giza runs the
+data path first. After completing the data path, Giza runs the metadata path
+with the Classic Paxos implementation. In the second iteration, we replaced
+Classic Paxos with Fast Paxos, improving latency performance. Giza parallelizes
+metadata path with data path, which can results in extra metadata or data clean
+up if either path fails to complete. However, the performance gain is
+significant. We also included a baseline which is the time it takes a proposing
+data center to issue a blob store request to the farthest data center in the
+quorum. Finally, we include the latency for storing the 4MB data directly to
+Azure storage, which is locally replicated.
 
-The results show that \name's performance beats the other two alternatives in the common case and has closest
-latency to the baseline. The median latency of \name's {\em put} is 374 ms, which is only 30 ms
-higher than the baseline. This is due to the latency of erasure coding 4MB data. On the other hand, the serial classic paxos version takes 
-852 ms, and the serial fast paxos version takes 598 ms. In summary, the latency cost for tolerating data center failure with Giza is a little more than 3 time that of local replication.
+The results show that \name's performance beats the other two alternatives in
+the common case and has closest latency to the baseline. The median latency of
+\name's {\em put} is 374 ms, which is only 30 ms higher than the baseline. This
+is due to the latency of erasure coding 4MB data. On the other hand, the serial
+classic paxos version takes 852 ms, and the serial fast paxos version takes 598
+ms. In summary, the latency cost for tolerating data center failure with Giza is
+a little more than 3 time that of local replication.
 
 \subsubsection{Giza {\em Get} Latency}
 
-Figure~\ref{fig:eval_giza_get} shows Giza's {\em get} performance comparison. The alternative design here is the non-optimistic {\em get } where the most current version for a blob is not assumed to be stored in the current data center. Hence, the metadata path and data path are executed sequentially, taking 419 ms. Giza's optimistic {\em get}, which runs the metadata path and data path in parallel, takes 223ms. Giza's {\em get} latency is higher than the baseline by 33 ms. The performance gap between \name and baseline is higher because \name needs to do a local table retrieval first before starting the datapath. In addition, it needs to decode the data fragments. Here the latency cost of erasure encoding on the read path with Giza is roughly twice that of reading from a locally redundant Azure storage.
+Figure~\ref{fig:eval_giza_get} shows Giza's {\em get} performance comparison.
+The alternative design here is the non-optimistic {\em get } where the most
+current version for a blob is not assumed to be stored in the current data
+center. Hence, the metadata path and data path are executed sequentially, taking
+419 ms. Giza's optimistic {\em get}, which runs the metadata path and data path
+in parallel, takes 223ms. Giza's {\em get} latency is higher than the baseline
+by 33 ms. The performance gap between \name and baseline is higher because \name
+needs to do a local table retrieval first before starting the datapath. In
+addition, it needs to decode the data fragments. Here the latency cost of
+erasure encoding on the read path with Giza is roughly twice that of reading
+from a locally redundant Azure storage.
 
 %The results are expected. The \name put latency consists of a 
 %metadata put latency and datapath latency. 
@@ -81,9 +133,14 @@ Figure~\ref{fig:eval_giza_get} shows Giza's {\em get} performance comparison. Th
 
 \input{fig_four}
 
-\name offers customers the flexibility to choose the set of data centers, as well as the erasure coding parameters (e.g., the number of data fragments $k$). 
+\name offers customers the flexibility to choose the set of data centers, as
+well as the erasure coding parameters (e.g., the number of data fragments $k$).
 %As the main goal of Giza is storage cost reduction, we want to encourage erasure encoding with more numbers of data fragments.
-It turns out that increasing $k$ not only reduces storage overhead, but also overall latency. This is because the latency in Giza is often dominated by the data path. Erasure coding with a larger $k$ results in smaller fragments and fewer bytes stored in each DC's blob storage. This reduces the data path latency and in turn the overall latency.
+It turns out that increasing $k$ not only reduces storage overhead, but also
+overall latency. This is because the latency in Giza is often dominated by the
+data path. Erasure coding with a larger $k$ results in smaller fragments and
+fewer bytes stored in each DC's blob storage. This reduces the data path latency
+and in turn the overall latency.
 
 Figure~\ref{fig:eval_giza_put_four} and Figure~\ref{fig:eval_giza_get_four} present the latency impact given different Giza footprints and erasure coding parameters. All the requests are generated from US-Central. Comparing US-2-1 to US-6-1 (World-2-1 to World-6-1), it is clear that increasing $k$ from 2 to 6 reduces the latency for both {\em put} and {\em get}.
 %This improvement of performance occurs when the max distance between the data centers in the higher configuration group (7 data centers) is not more than that in the lower configuration group (3 data centers).
