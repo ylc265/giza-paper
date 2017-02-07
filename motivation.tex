@@ -146,7 +146,7 @@ Upon data center failure, Giza needs to rebuild lost data through erasure coding
 
 {\bf Alternative Approach:} Giza stripes individual objects across multiple DCs. This design leads to cross-DC traffic when serving reads. An alternative design is to first aggregate objects into large logical volumes (say 100GB) and then erasure code different volumes across multiple DCs to generate parity volumes~\cite{f4:osdi14}. Since every object is stored in its entirety in one of the DCs, cross-DC traffic is avoided during reads.
 
-This design works great when objects are never deleted~\cite{f4:osdi14}. However, Giza must support deletion. Deleting objects from logical volumes (and canceling them from corresponding parity volumes) would result in complex bookkeeping and garbage collection, greatly increasing system complexity. In comparison, Giza keeps its design simple and replies on caching to drastically reduce the cross-DC traffic of reads to much lower than that of writes. 
+This design works great when objects are never deleted~\cite{f4:osdi14}. However, Giza must support deletion. Deleting objects from logical volumes (and canceling them from corresponding parity volumes) would result in complex bookkeeping and garbage collection, greatly increasing system complexity. In comparison, Giza keeps its design simple and relies on caching to drastically reduce the cross-DC traffic of reads to much lower than that of writes. 
 
 %%% Local Variables:
 %%% mode: latex
