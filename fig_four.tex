@@ -17,39 +17,44 @@
 
 \begin{figure*}
 \centering
+%\begin{minipage}{.5\textwidth}
+%  \centerline{
+%    \begin{subfigure}{0.5\textwidth}
+%      \includegraphics[width=\linewidth]{plots/giza_lat_put}
+%      \caption{Put}
+%      \label{fig:eval_giza_put}
+%    \end{subfigure}
+%    \begin{subfigure}{0.5\textwidth}
+%      \includegraphics[width=\linewidth]{plots/giza_lat_get}
+%      \caption{Get}
+%      \label{fig:eval_giza_get}
+%    \end{subfigure}
+%    }
+%  \caption{\name Overall Latency}
+%  \label{fig:geo_tpcc}
+%\end{minipage}%
 \begin{minipage}{.5\textwidth}
-  \centerline{
-    \begin{subfigure}{0.5\textwidth}
-      \includegraphics[width=\linewidth]{plots/giza_four_put}
-      \caption{Put}
-      \label{fig:eval_giza_put_four}
-    \end{subfigure}
-    \begin{subfigure}{0.5\textwidth}
-      \includegraphics[width=\linewidth]{plots/giza_four_get}
-      \caption{Get}
-      \label{fig:eval_giza_get_four}
-    \end{subfigure}
-  }
-  \caption{Performance for \name in different setups}
-\end{minipage}%
-\begin{minipage}{.5\textwidth}
-  \centerline{
-    \begin{subfigure}{0.5\textwidth}
-      \includegraphics[width=\linewidth]{plots/giza_lat_put}
-      \caption{Put}
-      \label{fig:eval_giza_put}
-    \end{subfigure}
-    \begin{subfigure}{0.5\textwidth}
-      \includegraphics[width=\linewidth]{plots/giza_lat_get}
-      \caption{Get}
-      \label{fig:eval_giza_get}
-    \end{subfigure}
+    \centerline{
+      \begin{subfigure}{0.5\textwidth}
+        \includegraphics[width=\linewidth]{plots/giza_four_put}
+        \caption{Put}
+        \label{fig:eval_giza_put_four}
+      \end{subfigure}
+      \begin{subfigure}{0.5\textwidth}
+        \includegraphics[width=\linewidth]{plots/giza_four_get}
+        \caption{Get}
+        \label{fig:eval_giza_get_four}
+      \end{subfigure}
     }
-  \caption{\name Overall Latency}
-  \label{fig:geo_tpcc}
-\end{minipage}
+    \caption{Performance for \name in different setups}
+  \end{minipage}%
+\begin{minipage}{.5\textwidth}
+    \centering
+        \includegraphics[width=0.6\textwidth]{plots/contention_bar}
+        \caption{Contention vs No Contention}
+        \label{fig:gizacontentionbar}
+  \end{minipage}
 \end{figure*}
-
 %%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "main"

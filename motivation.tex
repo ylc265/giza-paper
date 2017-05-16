@@ -56,7 +56,7 @@ with Giza
 \end{table}
 {\bf Writes Dominate with Caching:} The above table presents the effectiveness of caching. The ratio between the total amount of bytes reads to writes is 2.3$\times$. 
 %This implies that on average each object is read 2.3 times. 
-As illustrated in Section~\ref{sec:alternative}, Giza incurs 1x and 0.5x cross-DC network traffic on writes and reads, respectively. Hence, the ratio between cross-DC traffic due to reads and writes is $1.15\times$. Given the temperature analysis, it is most effective for Giza to cache objects for a short period of time within one single DC. Serving reads from the caching DC dramatically reduces the cross-DC traffic due to reads. Indeed, when objects are cached for one day, the cross-DC traffic attribute to reads vs writes reduces to 0.61$\times$. When objects are cached for one month, the ratio reduces to negligible 0.05$\times$, where the cross-DC traffic is completely dominated by writes.
+As illustrated in Section~\ref{sec:alternative}, Giza incurs 1x and 0.5x cross-DC network traffic on writes and reads, respectively. Hence, the ratio between cross-DC traffic due to reads and writes is $1.15\times$. Given the temperature analysis, it is most effective for Giza to cache objects for a short period of time within one single DC. Serving reads from the caching DC dramatically reduces the cross-DC traffic due to reads. Indeed, when objects are cached for one day, the cross-DC traffic attribute to reads vs writes reduces to 0.61$\times$. When objects are cached for one month, the ratio reduces to negligible 0.05$\times$, where the cross-DC traffic is completely dominated by writes. \textit{\textbf{Admittedly, caching the entire object also raises the total storage overhead to 2x (same as geo-replication) for a period of time. (8, 13)}}
 
 \begin{table}[h]
 \footnotesize
@@ -133,7 +133,7 @@ DC rebuild 						& 1x									& 2x 		& 4x 		& 6x
 \label{sec:alternative}
 
 Giza offers flexible trade-offs in terms of storage cost and cross-DC network traffic,
-as summarized in Table~\ref{tab:cost_benefit}.
+as summarized in Table~\ref{tab:cost_benefit}. \textit{\textbf{While detailed storage and networking cost analysis is not included in the paper (for obvious reasons), it is suffice to say that Giza leads to savings of many millions of dollars annually for One Drive alone. (7)}}
 
 {\bf Storage Cost:}
 To tolerate single data center failure, geo-replication incurs the storage overhead of $2\times1.3$ = 2.6 (with single DC storage overhead at 1.3).
