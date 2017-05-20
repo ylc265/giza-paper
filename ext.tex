@@ -8,7 +8,7 @@
 %simply launch new machines to replace any failed ones. In this section we focus
 %on how \name handles DC failures.
 
-\name needs to cope with transient or permanent data center failures. \textit{\textbf{Since \name treats an entire data center as its fault domain, failures within a data center (server failures, network failures, etc...) are resolved by the Cloud Service Provider. (5, 9)}}
+\name needs to cope with transient or permanent data center failures. \textit{\textbf{Since \name treats an entire data center as a fault domain, failures within a data center (server failures, network failures, etc...) are resolved by individual cloud object store and table store within each data center. (5, 9)}}
 
 {\bf Transient DC failure:}
 We broadly categorize transient DC failure to include temporary outages of the blob

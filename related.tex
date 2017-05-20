@@ -108,7 +108,7 @@ path, and store data in commodity cloud blob storage and metadata in commodity
 NoSQL table storage.
 
 {\bf Consistency in Global Storage:}
-\textit{\textbf{Metasync~\cite{metasync:atc16}  runs a variant of Paxos on top of simple storage API to maintain consistency across different cloud backends. (10)}} Megastore~\cite{baker11megastore} and Spanner~\cite{spanner:osdi12} applies
+Megastore~\cite{baker11megastore} and Spanner~\cite{spanner:osdi12} applies
 Multi-Paxos to maintain strong consisteny in global databases. Both of them
 requires two roundtrips for a slave site to commit. Mencius~\cite{mao08mencius}
 takes a round-robin approch for proposers in different site, amortizing the
@@ -118,7 +118,10 @@ and contended requests. In comparison to this series of work, \name takes a
 refined approach based on FastPaxos~\cite{lamport05fast}, separating metadata
 and data path before committing. This design choice allows \name to serve most
 requests still in one roundtrip while keeping servers stateless, using the
-limited ability of table service. 
+limited ability of table service.  \textit{\textbf{
+Metasync~\cite{metasync:atc15} implements Paxos using the append functionality provided by cloud file synchronization services such as DropBox, OneDrive. By contrast, Giza implements 
+Paxos using conditional-write APIs of cloud tables. The latter leads to a more
+efficient implementation as clients do not need to download and process logs from the cloud storage in order to execute Paxos.} 
 
 %%% Local Variables:
 %%% mode: latex

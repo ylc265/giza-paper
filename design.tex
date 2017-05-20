@@ -15,7 +15,8 @@ the data model, and the protocols for the {\em put}, {\em get}, and {\em delete}
 \paragraph{Architecture}
 {\name} is a global-scale cloud storage system that spans across many data
 centers. It stores mutable, versioned objects. Figure~\ref{fig:arch} shows the
-architecture of \name. \name stores an object through a {\em put} operation, consisting of a data operation and a metadata operation. These operations are executed in parallel to improve performance. On the data path, \name splits and
+architecture of \name, which uses existing single-DC object and table stores.
+\name stores an object through a {\em put} operation, consisting of a data operation and a metadata operation. These operations are executed in parallel to improve performance. On the data path, \name splits and
 encodes the object into data and parity fragments.
 Each coded fragment is named by a unique identifier and stored in a different DC.
 Each update to the object creates a new version. The version
@@ -26,10 +27,13 @@ across the data centers.
 \name is implemented on top of the existing Azure Storage infrastructure.
 It stores the coded fragments in Azure Blob storage 
 and the metadata in Azure Table storage.
-This provides two advantages. First, doing so allows the rapid development of \name
-by re-using mature, deployed, and well-tested systems. Second, it simplifies the
-failure recovery and deployment: \name runs on stateless nodes and can be readily
-integrated with the rest of the stateless cloud storage front-ends.
+This layered approach provides two advantages. First, doing so allows the rapid
+development of \name by re-using mature, deployed, and well-tested systems.
+Second, it simplifies the failure recovery and deployment: \name runs on
+stateless nodes and can be readily integrated with the rest of the stateless
+cloud storage front-ends.  \textit{\textbf{Layering is commonly used in cloud
+infrastructure. For example, Percolator~\cite{peng12large} supports distributed 
+transactions by layering over a fault-tolerant distributed table store.}}
 
 \paragraph{Technical challenges}
 In \name, each coded fragment is named by a unique identifier.
