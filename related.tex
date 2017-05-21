@@ -29,13 +29,13 @@ encryption to achieve a global-scale persistent storage. It assumes a
 fundamentally untrusted infrastructure. To achieve strong consistency,
 OceanStore serializes updates via a primary tier of replicas, a generalized form
 of primary. These primary replicas cooperate through a Byzantine agreement
-protocol to choose the final commit order for the updates. 
-HAIL~\cite{hail:ccs09}, RACS~\cite{racs:socc10}, DepSky~\cite{depsky:eurosys11} and
-NCCloud~\cite{nccloud:fast12} all stripe and erasure code data across multiple
-cloud storage providers. HAIL~\cite{hail:ccs09} applies error correction coding
-within individual providers and erasure coding across them. It is designed to
-withstand Byzantine adversaries and unifies proofs of retrievability and failure
-recovery. 
+protocol to choose the final commit order for the updates.
+HAIL~\cite{hail:ccs09}, RACS~\cite{racs:socc10}, DepSky~\cite{depsky:eurosys11}
+and NCCloud~\cite{nccloud:fast12} all stripe and erasure code data across
+multiple cloud storage providers. HAIL~\cite{hail:ccs09} applies error
+correction coding within individual providers and erasure coding across them. It
+is designed to withstand Byzantine adversaries and unifies proofs of
+retrievability and failure recovery.
 
 In comparison, Giza operates in a trusted environment and employs a
 leaderless consensus protocol. Updates may originate from arbitrary data centers
@@ -118,10 +118,13 @@ and contended requests. In comparison to this series of work, \name takes a
 refined approach based on FastPaxos~\cite{lamport05fast}, separating metadata
 and data path before committing. This design choice allows \name to serve most
 requests still in one roundtrip while keeping servers stateless, using the
-limited ability of table service.  \textit{\textbf{
-Metasync~\cite{metasync:atc15} implements Paxos using the append functionality provided by cloud file synchronization services such as DropBox, OneDrive. By contrast, Giza implements 
-Paxos using conditional-write APIs of cloud tables. The latter leads to a more
-efficient implementation as clients do not need to download and process logs from the cloud storage in order to execute Paxos.} 
+limited ability of table service. \textit{\textbf{
+    Metasync~\cite{metasync:atc15} implements Paxos using the append
+    functionality provided by cloud file synchronization services such as
+    DropBox, OneDrive. By contrast, Giza implements Paxos using
+    conditional-write APIs of cloud tables. The latter leads to a more efficient
+    implementation as clients do not need to download and process logs from the
+    cloud storage in order to execute Paxos.}}
 
 %%% Local Variables:
 %%% mode: latex
