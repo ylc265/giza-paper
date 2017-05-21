@@ -23,3 +23,5 @@
 main.pdf
 *.synctex.gz
 *.pdf
+*.bcf
+*.run.xml
