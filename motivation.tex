@@ -71,6 +71,17 @@ Percentage			& $57.96\%$	& $40.88\%$	& $1.16\%$
 {\bf Concurrency is Rare, but Versioning is Required:} The above table presents how often objects are updated and require versioning support. We observe that $57.96\%$ of the objects are written once and never updated during the three-month period. For the remaining, $40.88\%$ of the objects are updated exactly once and merely $1.16\%$ are updated more than twice. In addition, we observe that only $0.5\%$ of the updates
 are concurrent (within 1 second interval). This suggests that concurrent updates of same objects are rare in Giza (albeit possible).
 
+{\bf Deletion is not uncommon:} {\em It turns out that OneDrive customers not only create new objects, but also delete old objects from time to time. To characterize how often objects are deleted and how long they have been stored upon deletion, we follow all the objects that were created during the first 3 months in 2016 and match them with object deletion trace up to one year after creation. For all the objects whose matching deletion trace records exist, we calculate the age of the objects upon deletion. Figure~\ref{fig:deletion} plots the cumulative distribution (CDF) of storage capacity consumption against object age. Note that the CDF curve is cut off at the right end, where the age of objects exceeds one year.
+
+We observe that a non-trivial portion of the objects were deleted within one year after their creation. These objects account for $26.5\%$ of the total consumed storage capacity. On one hand, the amount of bytes deleted is much smaller than the total amount of bytes created. This partly explains the exponential growth of OneDrive's storage capacity consumption. On the other hand, the percentage and amount of bytes deleted is non-trivial. This suggests that removing the deleted objects from underlining cloud storage and reclaiming capacity is crucial in achieving storage efficiency.}
+
+\begin{figure}[tp]
+\centering
+\includegraphics[width=0.4\textwidth]{data/age-bytes}
+\caption{Deletion is not Uncommon}
+\label{fig:deletion}
+\end{figure}
+
 %\subsection{Giza: Flexible Cross-DC erasure coding }
 %
 %Erasure coding across geo-graphically distributed data centers is a most effective approach to reduce storage cost while achieving the fault tolerance goal of being able to survive data center failure. As Facebook's F4 system~\ref{bib:F4} has demonstrated, replacing geo-replication with cross-DC erasure coding can effectively reduce storage overhead from 3.6x to 2.1x, achieving huge savings for Facebook's 65PB of warm storage. While a fixed 2 + 1 solution works very well for Facebook's special workload, the public cloud storage desires much more flexibility. Different customers have different desirable operating points in terms of cost, durability and latency trade-off and are willing to accept different pricing for individual needs. 
