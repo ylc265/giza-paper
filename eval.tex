@@ -66,8 +66,9 @@ of the proposer's location.
 \subsection{\name Latency}
 
 The design of Giza went through multiple iterations and this section illustrates
-the performance gain in latency for each iteration. For the interest of space,
-we focus on the World-2-1 configuration. \textit{\textbf{All latency results include error bars representing the 10th and 95th percentile. (1)}}
+the performance gain for each iteration. For the interest of space, we focus on
+the World-2-1 configuration. All latency results include error bars representing
+the 10th and 95th percentile.
 %where US Central generates all requests as representative of the performance gain seen in other configurations.
 
 \subsubsection{Giza {\em Put} Latency}
@@ -89,11 +90,11 @@ Azure storage, which is locally replicated.
 
 The results show that \name's performance beats the other two alternatives in
 the common case and has closest latency to the baseline. The median latency of
-\name's {\em put} is 374 ms, which is only 30 ms higher than the baseline. This
-is due to the latency of erasure coding 4MB data. On the other hand, the serial
-classic paxos version takes 852 ms, and the serial fast paxos version takes 598
-ms. In summary, the latency cost for tolerating data center failure with Giza is
-a little more than 3 time that of local replication.
+\name's {\em put} is 374 ms, only 30 ms higher than the baseline. This is due to
+the latency of erasure coding 4MB data. On the other hand, the serial Paxos
+version takes 852 ms, and the serial Fast Paxos version takes 598 ms. In
+summary, the latency cost for tolerating data center failure with Giza is a
+little more than 3 time that of local replication.
 
 \subsubsection{Giza {\em Get} Latency}
 
@@ -177,9 +178,17 @@ of CockroachDB.
 
 \subsection{Giza Contention}
 
-Giza is optimized for low contention workloads. So, it employs a simple strategy for handling contention. In the event of contention, a Giza node that fails the fast round immediately switches to a classic round. In addition, Giza implements exponential back-off with the latency starting from the median cross-DC latency whenever prepare phase or accept phase further fails in the classic round.
+Giza is optimized for low contention workloads. So, it employs a simple strategy
+for handling contention. In the event of contention, a Giza node that fails the
+fast round falls back to a classic round. In addition, Giza implements
+exponential back-off with the latency starting from the median cross-DC latency
+whenever prepare phase or accept phase further fails.
 
-Figure~\ref{fig:gizacontentionbar} compares the performance of Giza driven by the OneDrive trace to that with no contention at all. In the OneDrive trace, we observe that only $0.5\%$ of updates are concurrent (within 1 second interval). Hence, it is not surprising that the performance of Giza driven by the OneDrive trace is almost identical to that with no contention.
+Figure~\ref{fig:gizacontentionbar} compares the performance of Giza driven by
+the OneDrive trace to that with no contention at all. In the OneDrive trace,
+only $0.5\%$ of updates are concurrent (within 1 second interval). Hence, it is
+not surprising that the performance of Giza driven by the OneDrive trace is
+almost identical to that with no contention.
 
 Figure~\ref{fig:gizacontentionbar} also presents the latency results of {\em adversary} contention. In this case, two Giza nodes within the same data center are issuing back-to-back concurrent puts to update the same object. This is definitely not the scenario that Giza targets. We include the results merely for the interest of our readers.
 

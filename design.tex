@@ -24,16 +24,15 @@ numbers and the coded fragment IDs in each version constitutes the
 metadata of the object. On the metadata path, \name replicates the metadata
 across the data centers.
 
-\name is implemented on top of the existing Azure Storage infrastructure.
-It stores the coded fragments in Azure Blob storage 
-and the metadata in Azure Table storage.
-This layered approach provides two advantages. First, doing so allows the rapid
-development of \name by re-using mature, deployed, and well-tested systems.
-Second, it simplifies the failure recovery and deployment: \name runs on
-stateless nodes and can be readily integrated with the rest of the stateless
-cloud storage front-ends.  \textit{\textbf{Layering is commonly used in cloud
-infrastructure. For example, Percolator~\cite{peng12large} supports distributed 
-transactions by layering over a fault-tolerant distributed table store.}}
+\name is implemented on top of the existing Azure Storage infrastructure. It
+stores the coded fragments in Azure Blob storage and the metadata in Azure Table
+storage. This layered approach provides two advantages. First, doing so allows
+the rapid development of \name by re-using mature, deployed, and well-tested
+systems. Second, it simplifies the failure recovery and deployment: \name runs
+on stateless nodes and can be readily integrated with the rest of the stateless
+cloud storage front-ends. Layering is commonly used in cloud infrastructure. For
+example, Percolator~\cite{peng12large} supports transactions by layering over a
+fault-tolerant distributed table store.
 
 \paragraph{Technical challenges}
 In \name, each coded fragment is named by a unique identifier.
@@ -107,9 +106,10 @@ deciding whether to accept the requests.
 \name works differently and uses the cloud tables as the acceptors.
 It implements the acceptor logic leveraging Azure Table's {\em atomic conditional update} capability.
 
-Paxos takes two {\em phases} to reach consensus, where {\em phase} $1$ prepares
-a ballot and {\em phase} $2$ commits a value. Since each phase takes one round
-trip, applying Paxos in Giza results in two cross-DC round trips for the metadata path.
+Paxos takes 2 {\em phases} to reach consensus, where {\em phase} $1$ prepares
+a ballot and {\em phase} $2$ commits a value. Each phase takes 1 round trip,
+so applying Paxos in Giza results in 2 cross-DC round trips for the metadata
+path.
 
 %writes~\footnote{Typical Paxos optimization elects a distinguished leader. The
   %leader executes {\em phase} $1$ in advance and only takes one round trip in
@@ -147,17 +147,16 @@ We use one table row per object, with a dynamic number of columns,
 where each version of the object takes three columns. The layout of each table row is
 shown in Figure~\ref{fig:metadataschema}.
 
-Each version is represented by a consecutive natural numbers, starting
-from $1$. Every \name write to the object creates a new version. For each
-version, \name initiates a separate Paxos instance and uses Paxos to guard
-against races from concurrent writes and cloud table failures.
-The metadata of all versions and the states of all the Paxos instances
-are stored in the same table row. Specifically, the metadata contains a triplet
-of columns for each version (Figure~\ref{fig:metadataschema}). Two
-of the columns are Paxos states: {\tt highest ballot seen} and {\tt highest accepted
-  ballot}. The other column, {\tt highest accepted value}, stores the metadata,
-including the erasure coding scheme, the unique fragment IDs,
-and which DCs the fragments are stored at.
+Each version is represented by a consecutive natural numbers, starting from $1$.
+Every \name write to the object creates a new version. For each version, \name
+initiates a separate Paxos instance and uses Paxos to guard against races from
+concurrent writes and cloud table failures. The metadata of all versions and the
+states of all the Paxos instances are stored in the same table row.
+Specifically, the metadata contains a triplet of columns for each version
+(Figure~\ref{fig:metadataschema}). Two of the columns are Paxos states: {\tt
+  highest ballot seen} and {\tt highest accepted ballot}. The other column, {\tt
+  highest accepted value}, stores the metadata, including the erasure coding
+scheme, the unique fragment IDs, and DCs that holds the fragments.
 
 {\name} additionally maintains a set of {\tt known committed versions} for all
 those that have been successfully committed. This is to facilitate both {\em put}
@@ -177,11 +176,11 @@ Through the process, Giza learns the committed versions from the remote DCs,
 which allows it to choose a correct version number for retry.
 
 Following Fast Paxos, Giza sends a PreAccept request to all the cloud tables,
-each located in a different DC. 
-Each request is an {\em atomic conditional update} on the table row of the object.
-If there are no competing writes of the same object, the PreAccept request
-will succeed in updating the table row. Otherwise, the PreAccept request will be
-rejected by the table and leave the table row unchanged. 
+each located in a different DC. Each request is an {\em atomic conditional
+  update} on the table row of the object. If there are no competing writes of
+the same object, the PreAccept request will succeed in updating the row.
+Otherwise, the PreAccept request will be rejected by the table and leave the row
+unchanged.
 
 Whenever {\name} receives a {\em fast quorum} of positive PreAccept
 responses, the corresponding version is considered to have been committed.
@@ -268,3 +267,8 @@ similar to the one in the write operation. This is to confirm whether the higher
 version has indeed been committed.
 
 % continue to design_part2.tex
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:

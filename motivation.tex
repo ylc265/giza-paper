@@ -1,7 +1,40 @@
 \section{The Case for Giza}
 \label{sec:motivation}
 
-Using Microsoft OneDrive as an example, this section presents the characteristics representative of Giza's workloads.
+This section gives an overview of Giza, and presents the characteristics
+representative of Giza's workloads using Microsoft OneDrive as an example.
+
+\begin{figure}[tp]
+\centering
+\includegraphics[width=0.4\textwidth]{images/giza_example_crop_fit}
+\caption{Storing Object in Giza}
+\label{fig:giza_example}
+\end{figure}
+
+\subsection{Giza Overview}
+
+Giza exploits the reduction in cross-DC bandwidth cost and leverages erasure
+coding to optimize the total cost of storing customer data in the cloud. It
+offers an externally strong consistent
+(linearizable~\cite{herlihy90linearizability}), versioned object store that
+erasure codes objects across global data centers.
+
+Customers access Giza by creating Giza storage accounts. For each storage
+account, the customers have the flexibility to choose the set of data centers
+where their data are striped across. In addition, they can specify the erasure
+coding scheme. Giza employs classic $n = k + m$ Reed-Solomon coding, which
+generates $m$ parity fragments from $k$ data fragments. All $n$ coded fragments
+are stored in separate DCs, which tolerates up to $m$ arbitrary DC failures.
+
+Figure~\ref{fig:giza_example} illustrates an exemplary flow of storing an object
+in Giza with 2 + 1 erasure coding. Giza divides the object into two data
+fragments ($a$ and $b$) and encodes a parity fragment $p$. It then stores the
+coded fragments in $3$ separate data centers.
+
+Giza is accessible via {\em put}, {\em get}, and {\em delete} interface. In
+addition, Giza supports versioning. Each new {\em put} does not overwrite
+existing data, but rather creates a new version of the data. The old versions
+remain available until explicitly deleted.
 
 \subsection{Microsoft OneDrive Characteristics}
 
@@ -56,7 +89,17 @@ with Giza
 \end{table}
 {\bf Writes Dominate with Caching:} The above table presents the effectiveness of caching. The ratio between the total amount of bytes reads to writes is 2.3$\times$. 
 %This implies that on average each object is read 2.3 times. 
-As illustrated in Section~\ref{sec:alternative}, Giza incurs 1x and 0.5x cross-DC network traffic on writes and reads, respectively. Hence, the ratio between cross-DC traffic due to reads and writes is $1.15\times$. Given the temperature analysis, it is most effective for Giza to cache objects for a short period of time within one single DC. Serving reads from the caching DC dramatically reduces the cross-DC traffic due to reads. Indeed, when objects are cached for one day, the cross-DC traffic attribute to reads vs writes reduces to 0.61$\times$. When objects are cached for one month, the ratio reduces to negligible 0.05$\times$, where the cross-DC traffic is completely dominated by writes. \textit{\textbf{Admittedly, caching the entire object also raises the total storage overhead to 2x (same as geo-replication) for a period of time. (8, 13)}}
+As illustrated in Section~\ref{sec:alternative}, Giza incurs 1x and 0.5x
+cross-DC network traffic on writes and reads, respectively. Hence, the ratio
+between cross-DC traffic due to reads and writes is $1.15\times$. Given the
+temperature analysis, it is most effective for Giza to cache objects for a short
+period of time within one single DC. Serving reads from the caching DC
+dramatically reduces the cross-DC traffic due to reads. Indeed, when objects are
+cached for one day, the cross-DC traffic attribute to reads vs writes reduces to
+0.61$\times$. When objects are cached for one month, the ratio reduces to
+negligible 0.05$\times$, where the cross-DC traffic is completely dominated by
+writes. Admittedly, caching the entire object also raises the total storage
+overhead to 2$\times$ (same as geo-replication) for a period of time.
 
 \begin{table}[h]
 \footnotesize
@@ -71,13 +114,29 @@ Percentage			& $57.96\%$	& $40.88\%$	& $1.16\%$
 {\bf Concurrency is Rare, but Versioning is Required:} The above table presents how often objects are updated and require versioning support. We observe that $57.96\%$ of the objects are written once and never updated during the three-month period. For the remaining, $40.88\%$ of the objects are updated exactly once and merely $1.16\%$ are updated more than twice. In addition, we observe that only $0.5\%$ of the updates
 are concurrent (within 1 second interval). This suggests that concurrent updates of same objects are rare in Giza (albeit possible).
 
-{\bf Deletion is not uncommon:} {\em It turns out that OneDrive customers not only create new objects, but also delete old objects from time to time. To characterize how often objects are deleted and how long they have been stored upon deletion, we follow all the objects that were created during the first 3 months in 2016 and match them with object deletion trace up to one year after creation. For all the objects whose matching deletion trace records exist, we calculate the age of the objects upon deletion. Figure~\ref{fig:deletion} plots the cumulative distribution (CDF) of storage capacity consumption against object age. Note that the CDF curve is cut off at the right end, where the age of objects exceeds one year.
+{\bf Deletion is not uncommon:} It turns out that OneDrive customers not only
+create new objects, but also delete old objects from time to time. To
+characterize how often objects are deleted and how long they have been stored
+upon deletion, we follow all the objects that were created during the first 3
+months in 2016 and match them with object deletion trace up to one year after
+creation. For all the objects whose matching deletion trace records exist, we
+calculate the age of the objects upon deletion. Figure~\ref{fig:deletion} plots
+the cumulative distribution (CDF) of storage capacity consumption against object
+age. Note that the CDF curve is cut off at the right end, where the age of
+objects exceeds one year.
 
-We observe that a non-trivial portion of the objects were deleted within one year after their creation. These objects account for $26.5\%$ of the total consumed storage capacity. On one hand, the amount of bytes deleted is much smaller than the total amount of bytes created. This partly explains the exponential growth of OneDrive's storage capacity consumption. On the other hand, the percentage and amount of bytes deleted is non-trivial. This suggests that removing the deleted objects from underlining cloud storage and reclaiming capacity is crucial in achieving storage efficiency.}
+We observe that a non-trivial portion of the objects were deleted within one
+year after their creation. These objects account for $26.5\%$ of the total
+consumed storage capacity. On one hand, the amount of bytes deleted is much
+smaller than the total amount of bytes created. This partly explains the
+exponential growth of OneDrive's storage capacity consumption. On the other
+hand, the percentage and amount of bytes deleted is non-trivial. This suggests
+that removing the deleted objects from underlining cloud storage and reclaiming
+capacity is crucial in achieving storage efficiency.
 
 \begin{figure}[tp]
 \centering
-\includegraphics[width=0.4\textwidth]{data/age-bytes}
+\includegraphics[width=0.35\textwidth]{data/age-bytes}
 \caption{Deletion is not Uncommon}
 \label{fig:deletion}
 \end{figure}
@@ -116,6 +175,7 @@ We observe that a non-trivial portion of the objects were deleted within one yea
 \begin{table}[tp]
 \centering
 \footnotesize
+%\small
 \begin{tabular}{|l||c||c|c|c|}
 \hline
 											& Geo-Rep.						& \multicolumn{3}{c|}{Giza}
@@ -143,18 +203,33 @@ DC rebuild 						& 1x									& 2x 		& 4x 		& 6x
 \subsection{Giza Trade-offs}
 \label{sec:alternative}
 
-Giza offers flexible trade-offs in terms of storage cost and cross-DC network traffic,
-as summarized in Table~\ref{tab:cost_benefit}. \textit{\textbf{Although we cannot discuss the details of how Giza's trade-offs translate to overall cost reductions, our internal calculation 
-indicates that Giza leads to savings of many millions of dollars annually for One Drive alone. (7)}}
+Giza offers flexible trade-offs in terms of storage cost and cross-DC network
+traffic, as summarized in Table~\ref{tab:cost_benefit}. Although we cannot
+discuss the details of how Giza's trade-offs translate to overall cost
+reductions, our internal calculation indicates that Giza leads to savings of
+many millions of dollars annually for One Drive alone.
 
-{\bf Storage Cost:}
-To tolerate single data center failure, geo-replication incurs the storage overhead of $2\times1.3$ = 2.6 (with single DC storage overhead at 1.3).
-With $k+1$ erasure coding, where $k$ ranges from 2 to 6, Giza reduces the storage overhead to between 1.9 and 1.5, increasing cost savings from $27\%$ to $42\%$.
-The storage cost savings come with inflated cross-DC traffic, which is examined next.
+{\bf Storage Cost:} To tolerate single DC failure, geo-replication incurs the
+storage overhead of $2\times1.3$ = 2.6 (with single DC storage overhead at 1.3).
+With $k+1$ erasure coding, where $k$ ranges from 2 to 6, Giza reduces the
+storage overhead to between 1.9 and 1.5, increasing cost savings from $27\%$ to
+$42\%$. The storage cost savings come with inflated cross-DC traffic, examined
+below.
 
-{\bf Cross-DC Traffic:} For writes, Giza consumes same cross-DC traffic as geo-replication. With $k+1$ erasure coding, an object is encoded into $k+1$ fragments, where one fragment is stored in a local DC and the rest $k$ in remote DCs. Hence, the ratio between cross-DC traffic and object size is $k/k = 1$, same as geo-replication.
-For reads, however, Giza consumes more cross-DC traffic. $k$ fragments are required, where one is from the local DC and the rest $k-1$ from remote DCs. Hence, the ratio between cross-DC traffic and object size is $(k-1)/k$, which increases with $k$. In comparison, geo-replication serves reads entirely from the local DC and incurs no cross-DC traffic.  However, as discussed in Sec~\ref{fig:case_for_giza}, the cross-DC read traffic can be cut down significantly with caching.
-Upon data center failure, Giza needs to rebuild lost data through erasure coding reconstruction, which requires $k$ bytes of cross-DC traffic to reconstruct one byte of data. Geo-replication simply replicates every object and thus incurs 1x of cross-DC traffic.
+{\bf Cross-DC Traffic:} For writes, Giza consumes same cross-DC traffic as
+geo-replication. With $k+1$ erasure coding, an object is encoded into $k+1$
+fragments, where one fragment is stored in a local DC and the rest $k$ in remote
+DCs. Hence, the ratio between cross-DC traffic and object size is $k/k = 1$,
+same as geo-replication. For reads, however, Giza consumes more cross-DC
+traffic. $k$ fragments are required, where one is from the local DC and the rest
+$k-1$ from remote DCs. Hence, the ratio between cross-DC traffic and object size
+is $(k-1)/k$, which increases with $k$. In comparison, geo-replication serves
+reads entirely from the local DC and incurs no cross-DC traffic. However, as
+discussed in Sec~\ref{fig:case_for_giza}, the cross-DC read traffic can be cut
+down significantly with caching. Upon data center failure, Giza needs to rebuild
+lost data through erasure coding reconstruction, which requires $k$ bytes of
+cross-DC traffic to reconstruct one byte of data. Geo-replication simply
+replicates every object and thus incurs 1x of cross-DC traffic.
 
 {\bf Alternative Approach:} Giza stripes individual objects across multiple DCs. This design leads to cross-DC traffic when serving reads. An alternative design is to first aggregate objects into large logical volumes (say 100GB) and then erasure code different volumes across multiple DCs to generate parity volumes~\cite{f4:osdi14}. Since every object is stored in its entirety in one of the DCs, cross-DC traffic is avoided during reads.
 

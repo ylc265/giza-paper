@@ -8,7 +8,10 @@
 %simply launch new machines to replace any failed ones. In this section we focus
 %on how \name handles DC failures.
 
-\name needs to cope with transient or permanent data center failures. \textit{\textbf{Since \name treats an entire data center as a fault domain, failures within a data center (server failures, network failures, etc...) are resolved by individual cloud object store and table store within each data center. (5, 9)}}
+\name needs to cope with transient or permanent data center failures. Since
+\name treats an entire data center as a fault domain, failures within a data
+center (server failures, network failures, etc...) are resolved by individual
+cloud object store and table store within each data center.
 
 {\bf Transient DC failure:}
 We broadly categorize transient DC failure to include temporary outages of the blob
@@ -41,14 +44,18 @@ JinL: What about new objects created during the transient failure of DCs. I felt
 }
 }
 
-{\bf Permanent DC Failure:}
-Although extremely rare, a data center may fail catastrophically. The blob and
-table storage service within the DC may also experience long-term outages. We
-categorize these all as permanent DC failure. 
+{\bf Permanent DC Failure:} Although extremely rare, a DC may fail
+catastrophically. The blob and table service within the DC may also experience
+long-term outages. We categorize these all as permanent DC failure.
 
 \name handles permanent DC failure by employing logical DC names in storage accounts. The mapping between a logical DC name to a physical DC location is stored in a separate service external to \name. Upon a permanent DC failure, the same logical DC name is re-mapped from the failed DC to a healthy replacement. Giza metadata records logical DC names and therefore remains unchanged after the re-mapping. This is similar to DNS, where same domain name can be re-mapped to a different physical IP address. This way of handling failure is also reported in Chubby~\cite{chubby:osdi06}.
 
-Upon the permanent DC failure, \name launches recovery coordinators to reconstruct the missing fragments and re-insert the metadata rows in the replacement DC. The procedure is similar to how \name handles transient failures yet may last much longer. The reconstruction is paced and prioritized based on demand, with sufficient cross-DC network bandwidth in-place to ensure timely recovery.
+Upon the permanent DC failure, \name launches recovery coordinators to
+reconstruct the lost fragments and re-insert the metadata rows in the
+replacement DC. The procedure is similar to how \name handles transient failures
+yet may last longer. The reconstruction is paced and prioritized based on
+demand, with sufficient cross-DC network bandwidth in-place to ensure timely
+recovery.
 
 %% \section{Replica Configuration Failure Recovery}
 

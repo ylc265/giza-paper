@@ -1,19 +1,18 @@
 \subsection{Joint Optimization of Data and Meta-data Operations}
 
-The naive implementation of \name first writes out fragments (data and parity), 
-and then writes out metadata, resulting in two or more cross-DC round trips. To
+The naive version of \name first writes out fragments (data and parity), and
+then writes out metadata, resulting in two or more cross-DC round trips. To
 reduce latency, we optimize \name to execute the data and metadata paths in
 parallel. This is potentially problematic because either the data or metadata
 path could fail while the other one succeeds. Below, we describe how {\em put}
 and {\em get} cope with this challenge and ensure end-to-end correctness.
 
-{\bf The \emph{put} Operation:} After generating the coded fragments,
-\name launches both the data and metadata paths in parallel.
-In the common case, \name waits for both the data and the
-metadata paths to finish before acknowledging clients. Furthermore, it
-replicates the Commit confirmation only after both the data and the metadata
-paths complete. In other words, \name ensures that {\tt known committed versions}
-only include those whose data and metadata have both been successfully committed.
+{\bf The \emph{put} Operation:} After generating the coded fragments, \name
+launches the data and metadata paths in parallel. In the common case, \name
+waits for both the data and the metadata paths to finish before acknowledging
+clients as well as replicating the commit confirmation. In other words, \name
+ensures that {\tt known committed versions} only include those whose data and
+metadata have both been successfully committed.
 
 In one uncommon case, the data path succeeds, while the metadata path fails.
 Now, the fragments stored in the cloud blobs become orphans.
@@ -23,8 +22,8 @@ discovers the orphan fragments as not being referenced in the metadata store,
 and then removes the fragments from the corresponding blob storage in all the DCs.
 
 In another uncommon case, the data path fails, but the metadata path succeeds.
-This is rather subtle, as it creates a challenge for the {\em get} operation,
-as addressed next.
+This subtle case creates a challenge for the {\em get} operation, as addressed
+next.
 
 {\bf The \emph{get} Operation:}
 A naive way to perform {\em get} is to first read the latest metadata and then retrieve the fragments.
