@@ -4,12 +4,41 @@
 This section gives an overview of Giza, and presents the characteristics
 representative of Giza's workloads using Microsoft OneDrive as an example.
 
-\begin{figure}[tp]
+%\begin{figure}[tp]
+%\centering
+%\includegraphics[width=0.4\textwidth]{images/giza_example_crop_fit}
+%\caption{Storing Object in Giza}
+%\label{fig:giza_example}
+%\end{figure}
+
+\begin{figure*}[htp]
 \centering
-\includegraphics[width=0.4\textwidth]{images/giza_example_crop_fit}
+%\hspace{-2em}
+\begin{minipage}{0.3\textwidth}%
+\centering
+%\includegraphics[width=\textwidth]{images/giza_example_crop_fit}
+\includegraphics[width=\textwidth]{images/giza_example_crop_fit}
 \caption{Storing Object in Giza}
 \label{fig:giza_example}
-\end{figure}
+\end{minipage}%
+\begin{minipage}{0.7\textwidth}%
+\captionsetup{type=figure}
+\centering
+		\hspace{-1.5em}
+    \subcaptionbox{\label{fig:object_size-storage_capacity}}
+      {\includegraphics[height=0.275\textwidth]{data/object_size-storage_capacity}}%
+		\hspace{-1em}
+    \subcaptionbox{\label{fig:write_read_gap-bytes_read}}
+      {\includegraphics[height=0.275\textwidth]{data/write_read_gap-bytes_read}}%
+		\hspace{-1.5em}
+    \subcaptionbox{\label{fig:deletion}}
+      {\includegraphics[height=0.275\textwidth]{data/age-bytes}}%
+\caption{Microsoft OneDrive Characteristics}
+\label{fig:case_for_giza}
+%\end{figure}
+\end{minipage}%
+
+\end{figure*}
 
 \subsection{Giza Overview}
 
@@ -38,26 +67,26 @@ remain available until explicitly deleted.
 
 \subsection{Microsoft OneDrive Characteristics}
 
-\begin{figure}[tp]
-%\centering
-%\hspace{-3em}
-\begin{subfigure}{.25\textwidth}
-  \centering
-  \includegraphics[width=\linewidth]{data/object_size-storage_capacity}
-  \caption{}
-  \label{fig:object_size-storage_capacity}
-\end{subfigure}%
-%\includegraphics[width=0.5\textwidth]{data/object_size-storage_capacity}
-%\hspace{-2em}
-\begin{subfigure}{.25\textwidth}
-  \centering
-  \includegraphics[width=\linewidth]{data/write_read_gap-bytes_read}
-  \caption{}
-  \label{fig:write_read_gap-bytes_read}
-\end{subfigure}%
-\caption{Microsoft OneDrive Characteristics}
-\label{fig:case_for_giza}
-\end{figure}
+%\begin{figure}[tp]
+%%\centering
+%%\hspace{-3em}
+%\begin{subfigure}{.25\textwidth}
+  %\centering
+  %\includegraphics[width=\linewidth]{data/object_size-storage_capacity}
+  %\caption{}
+  %\label{fig:object_size-storage_capacity}
+%\end{subfigure}%
+%%\includegraphics[width=0.5\textwidth]{data/object_size-storage_capacity}
+%%\hspace{-2em}
+%\begin{subfigure}{.25\textwidth}
+  %\centering
+  %\includegraphics[width=\linewidth]{data/write_read_gap-bytes_read}
+  %\caption{}
+  %\label{fig:write_read_gap-bytes_read}
+%\end{subfigure}%
+%\caption{Microsoft OneDrive Characteristics}
+%\label{fig:case_for_giza}
+%\end{figure}
 
 {\bf Methodology:} The data presented in this section is derived from a three-month trace of the OneDrive service. OneDrive serves hundreds of millions of users and stores their objects which include documents, photos, music, videos, configuration files, and more. The trace includes {\em all} reads, writes, and updates to {\em all} objects between January 1 and March 31, 2016. We observe the following:
 
@@ -134,12 +163,12 @@ hand, the percentage and amount of bytes deleted is non-trivial. This suggests
 that removing the deleted objects from underlining cloud storage and reclaiming
 capacity is crucial in achieving storage efficiency.
 
-\begin{figure}[tp]
-\centering
-\includegraphics[width=0.35\textwidth]{data/age-bytes}
-\caption{Deletion is not Uncommon}
-\label{fig:deletion}
-\end{figure}
+%\begin{figure}[tp]
+%\centering
+%\includegraphics[width=0.35\textwidth]{data/age-bytes}
+%\caption{Deletion is not Uncommon}
+%\label{fig:deletion}
+%\end{figure}
 
 %\subsection{Giza: Flexible Cross-DC erasure coding }
 %
