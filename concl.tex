@@ -1,6 +1,6 @@
 \section{Conclusion}
 
-In this paper, we present the design and evaluation of Giza---a strongly
+In this paper, we present the design and evaluation of Giza -- a strongly
 consistent, versioned object store that encodes objects across global data
 centers. Giza implements the Paxos consensus algorithms on top of existing cloud
 APIs and have separate data and metadata paths. As a result, Giza is fast in
@@ -8,8 +8,9 @@ normal operation for our target workloads. Our evaluation of Giza on a
 deployment over \deployment demonstrates that Giza achieves much lower latency
 than naively adopting a globally consistent storage system.
 
+\section{Acknowledgments}
 
-%%% Local Variables:
-%%% mode: latex
-%%% TeX-master: "main"
-%%% End:
+We thank Andy Glover, Jose Barreto, Jon Bruso, Ronakkumar Desai, Joshua Entz from the OneDrive team for their many contributions.
+Special thanks go to Jeff Irwin for his contributions that helped enable Giza.
+We also thank all of the members of the Azure Storage team for invaluable discussions and iterations,
+as well as Taesoo Kim and anonymous reviewers for their insightful feedback.
