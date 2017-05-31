@@ -6,11 +6,6 @@
 %%% End:
 
 {\bf Erasure Coding in Cluster Storage:}
-Weatherspoon et al. establish a strong case for erasure coded storage
-systems~\cite{weatherspoon02erasure}. They demonstrate that such systems consume
-an order of magnitude less bandwidth and storage to provide similar durability
-as replicated systems.
-
 Erasure coding has long been applied in many large-scale distributed storage
 systems~\cite{fab:asplos04, zhang04repstore, haeberlen05glacier, abd05ursa,
   welch08scalable, sathiamoorthy13xoring, zhang16efficient}, including
@@ -18,55 +13,40 @@ productions systems at Facebook~\cite{borthakur2010hdfs},
 Google~\cite{fikes2010storage, ford10availability} and Microsoft
 Azure~\cite{huang12erasure}. These solutions generalize the RAID
 approach~\cite{patterson88case, wilkes96hp} to a distributed cluster setting.
-Giza synchronously replicates erasure coded data across WAN. Since the latency
-across WAN is much higher than in a cluster, Giza focuses on minimizing round
-trips so as to optimize latency. In addition, Giza provides globally consistent
-{\em get} and {\em put} with versioning support.
+Giza is unique in synchronously replicating erasure coded data across WAN
+and minimizing cross-DC latency. In addition,
+Giza provides globally consistent {\em put} and {\em get} with versioning support.
 
 {\bf Erasure Coding in Wide Area Storage:}
-OceanStore \cite{oceanstore:asplos00, pond:fast03} employs erasure coding and
-encryption to achieve a global-scale persistent storage. It assumes a
-fundamentally untrusted infrastructure. To achieve strong consistency,
-OceanStore serializes updates via a primary tier of replicas, a generalized form
-of primary. These primary replicas cooperate through a Byzantine agreement
-protocol to choose the final commit order for the updates.
-HAIL~\cite{hail:ccs09}, RACS~\cite{racs:socc10}, DepSky~\cite{depsky:eurosys11}
-and NCCloud~\cite{nccloud:fast12} all stripe and erasure code data across
-multiple cloud storage providers. HAIL~\cite{hail:ccs09} applies error
-correction coding within individual providers and erasure coding across them. It
-is designed to withstand Byzantine adversaries and unifies proofs of
-retrievability and failure recovery.
+HAIL~\cite{hail:ccs09}, OceanStore~\cite{oceanstore:asplos00, pond:fast03},
+RACS~\cite{racs:socc10}, DepSky~\cite{depsky:eurosys11} 
+and NCCloud~\cite{nccloud:fast12} all stripe and erasure code data at a global scale.
 
-In comparison, Giza operates in a trusted environment and employs a
-leaderless consensus protocol. Updates may originate from arbitrary data centers
-and still complete with optimal latency without relaying the updates through a primary. Giza also exploits the trade-off among storage
-cost, network bandwidth and durability.
+HAIL~\cite{hail:ccs09} is designed to withstand Byzantine adversaries.
+OceanStore~\cite{oceanstore:asplos00, pond:fast03} assumes untrusted infrastructure
+and serializes updates via a primary tier of replicas.
+Giza operates in a trusted environment.
 
-RACS~\cite{racs:socc10} builds a working system that is compatible with existing
-cloud storage clients and able to use multiple storage providers as back-ends.
-DepSky~\cite{depsky:eurosys11} presents an enhanced scheme by employing an
-secret sharing scheme that provides confidentiality guarantee. Both of the
-systems address the conflict caused by concurrent writers using Apache
-ZooKeeper~\cite{zookeeper:atc10}, where readers-writer locks are implemented at
-per-key granularity to synchronize distributed RACS proxies. Giza, on the other
-hand, implements consensus algorithms for individual keys and achieves strong
-consistency without centralized coordinators. 
+RACS~\cite{racs:socc10} and DepSky~\cite{depsky:eurosys11} address conflicts
+caused by concurrent writers using Apache ZooKeeper~\cite{zookeeper:atc10},
+where readers-writer locks are implemented at per-key granularity for synchronization.
+Giza, on the other hand, implements consensus algorithms for individual keys
+and achieves strong consistency without centralized coordinators.
+In addition, Giza employs a leaderless consensus protocol. 
+Updates may originate from arbitrary data centers
+and still complete with optimal latency without being relayed through a primary.
 
 NCCloud~\cite{nccloud:fast12} implements a class of functional regenerating
-codes~\cite{dimakis07networkcoding} that optimize cross-WAN repair bandwidth
-when a data center fails. Giza considers the failure of a data center to be a
-rare event, and employs standard Reed-Solomon coding, which leads to more WAN
-traffic for catastraphic data center repair, but much simpler operation under
-normal workload.
+codes~\cite{dimakis07networkcoding} that optimize cross-WAN repair bandwidth.
+Giza employs standard Reed-Solomon coding and leaves such optimization to future.
 
-Facebook f4~\cite{f4:osdi14} is a production warm blob storage system, storing
-over 65PBs of logical data. It applies erasure coding across data centers and
-reduces effective-replication-factor from 3.6 to 2.1. It adopts an erasure
-coding approach as discussed in Section~\ref{sec:alternative}, but avoids the
-deletion challenge by never deleting data objects. In f4, every data object is
-encrypted with a unique key. Whenever a data object in a volume needs to be
-deleted, its unique key is destroyed while the encrypted data object remains in
-the volume. This simplification suits Facebook very well, because its deleted
+Facebook f4~\cite{f4:osdi14} is a production warm blob storage system.
+It applies erasure coding across data centers for storage efficiency.
+As discussed in Section~\ref{sec:alternative}, f4 avoids the
+deletion challenge by never truly deleting data objects. 
+Whenever a data object is deleted, the unique key used to encrypt the object is destroyed
+while the encrypted data remains in the system.
+This simplification suits Facebook very well, because its deleted
 data only accounts for $6.8\%$ of total storage and Facebook could afford not to
 reclaim the storage space~\cite{f4:osdi14}. This, unfortunately, is not an
 option for Giza, as our workloads show much higher deletion rate. Not reclaiming
@@ -75,6 +55,7 @@ waste and completely void the gain from cross-DC erasure coding. Furthermore,
 not physically deleting customer data objects - even if encrypted - wouldn't
 meet the compliance requirements for many of our customers.
 
+\comment{
 In comparison, Giza vastly simplifies the deletion problem by treating data
 objects independently. It deletes a data object by deleting all its data and
 parity fragments from individual DCs, which involves only tiny metadata traffic
@@ -84,7 +65,6 @@ serving data. Since the target workload for Giza is rather cold (very small
 numbers of reads over a large corpus of data), the amount of WAN traffic due to
 serving data turns out only a small fraction compared to storing data.
 
-\comment{
 There are two general approaches in applying erasure coding to storage.  One
 is to generate coded fragments within each data object.  This is commonly used
 to achieve redundancy within a single data center~\cite{f4:osdi14}.  Another 
@@ -107,17 +87,18 @@ coding to data so as to achieve memory efficiency. Giza follows a similar design
 path, and store data in commodity cloud blob storage and metadata in commodity
 NoSQL table storage.
 
-{\bf Consistency in Global Storage:} Megastore~\cite{baker11megastore} and
-Spanner~\cite{spanner:osdi12} applies Multi-Paxos to maintain strong consisteny
+{\bf Consistency in Global Storage:} 
+Megastore~\cite{baker11megastore} and
+Spanner~\cite{spanner:osdi12} applies Multi-Paxos to maintain strong consistency
 in global databases. Both of them requires two round trips for a slave site to
-commit. Mencius~\cite{mao08mencius} takes a round-robin approch for proposers in
-different site, amortizing the commit latency. EPaxos~\cite{epaxos:sosp13} uses
+commit. Mencius~\cite{mao08mencius} takes a round-robin approach for proposers in
+different sites, amortizing commit latency. EPaxos~\cite{epaxos:sosp13} uses
 fine-grained dependency tracking at acceptor-side to ensure low commit latency
-for both non-contended and contended requests. In comparison to this series of
-work, \name takes a refined approach based on FastPaxos~\cite{lamport05fast},
+for both non-contended and contended requests. In comparison, 
+\name takes a refined approach based on FastPaxos~\cite{lamport05fast},
 separating metadata and data path before committing. This design choice allows
-\name to serve most requests still in one round trip while keeping servers
-stateless, using the limited ability of table service.
+\name to serve most requests still in single cross-DC round trip
+while keeping servers stateless, using the limited ability of table service.
 Metasync~\cite{metasync:atc15} implements Paxos using the append functionality
 provided by cloud file synchronization services such as DropBox, OneDrive. By
 contrast, Giza implements Paxos using conditional-write APIs of cloud tables.
