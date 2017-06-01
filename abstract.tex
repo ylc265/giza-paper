@@ -10,8 +10,8 @@
 	a strongly consistent, versioned object store that applies erasure coding
   across global data centers.
 	The key technical challenge Giza addresses is to achieve single cross-DC
-	round trip latency for common reads and writes, while at the same time maintaining
-	external consistency under uncommon contention.
+	round trip latency for the common contention-free workload, while also maintaining
+	strong consistency when there are conflicting access.
 	Giza addresses the challenge with a novel implementation of well-known
 	distributed consensus algorithms tailored for restricted cloud storage APIs.
 	Giza is deployed to \deployment and experimental results demonstrate

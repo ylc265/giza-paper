@@ -34,6 +34,7 @@ existing data, but rather creates a new version of the data. The old versions
 remain available until explicitly deleted.
 
 \subsection{Microsoft OneDrive Characteristics}
+\label{sec:onedrive}
 
 %\begin{figure}[tp]
 %%\centering
@@ -222,7 +223,7 @@ traffic. $k$ fragments are required, where one is from the local DC and the rest
 $k-1$ from remote DCs. Hence, the ratio between cross-DC traffic and object size
 is $(k-1)/k$, which increases with $k$. In comparison, geo-replication serves
 reads entirely from the local DC and incurs no cross-DC traffic. However, as
-discussed in Sec~\ref{fig:case_for_giza}, the cross-DC read traffic can be cut
+discussed in Sec~\ref{fig:onedrive}, the cross-DC read traffic can be cut
 down significantly with caching. Upon data center failure, Giza needs to rebuild
 lost data through erasure coding reconstruction, which requires $k$ bytes of
 cross-DC traffic to reconstruct one byte of data. Geo-replication simply

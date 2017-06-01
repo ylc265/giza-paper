@@ -16,7 +16,7 @@ Azure Storage optionally replicate customer data to secondary DCs hundreds of mi
 It is essential to the customers that even in the unlikely, albeit inevitable,
 event of catastrophic data center failure, their data remain durable.
 
-Geo-replication, however, doubles storage cost.
+Geo-replication, however, doubles the storage cost.
 With many exabytes at present and exponential growth projected,
 it is highly desirable to lower the storage cost
 required for maintaining geo-redundancy.
@@ -59,43 +59,59 @@ The significant advancement in cross-DC networking is now making cross-DC erasur
 \comment{bib:FA-1, https://en.wikipedia.org/wiki/Fiber-Optic_Link_Around_the_Globe}
 
 \subsection{Challenges and Contributions}
+This paper presents Giza, a cloud object store that erasure codes and stripes
+customer data across globally distributed DCs.  We aim to achieve two design
+goals. One, Giza should guarantee strong consistency while also minimizing
+operation latency.  The other, Giza should make full use of existing cloud
+infrastructure to simplify its implementation and deployment.
 
-Giza erasure codes and stripes customer data across multiple data centers,
-so reads and writes require cross-DC communication. The latency is minimized when
-reads and writes complete within single cross-DC round trip. This is not
-difficult to achieve for typical Giza workloads, where objects are updated
-infrequently.
-
-Nevertheless, concurrent updates of same object do exist.
-Giza needs to ensure strong consistency when conflicts occur. This becomes
-particularly interesting as Giza allows requests to originate from any DC.
+Since reads and writes requires cross-DC communication, latency is minimized 
+when operations can complete within a single cross-DC roundtrip.  This is 
+possible to achieve for our target workloads (e.g. OneDrive), where 
+objects are updated infrequently.
+Nevertheless, concurrent updates to the same object do exist.
+Furthermore, such conflicting access might originate from different DCs.
+%Giza needs to ensure strong consistency when conflicts occur. This becomes
+%particularly interesting as Giza allows requests to originate from any DC.
 Consider two concurrent requests updating the same object (with different data)
-from two separate data centers. Depending on network latency, the individual requests may
+from two separate DCs. Depending on network latency, the two requests may
 arrive at different data centers in different order. If not handled properly,
-this would result in data inconsistency.
+this would result in data inconsistency.  
 
-To ensure strong consistency, one possible approach is to dedicate a primary
-data center that handles all updates and enforces execution order. This is less
-than ideal because the requests from non-primary data centers have to be relayed
-to the primary first. This would incur extra cross-DC latency, even when there are
-no concurrent updates.
+To ensure strong consistency, one
+possible approach is to dedicate a primary DC that handles all updates and
+enforces execution order. However, requests from non-primary data centers have
+to be relayed to the primary first, incurring extra cross-DC latency, even when
+there are no concurrent updates. To guarantee strong consistency while
+minimizing latency in the common case, Giza employs 
+FastPaxos~\cite{lamport05fast}, which incurs a single cross-DC roundtrip when
+there are no concurrent updates.  When conflicting access do sometimes occur,
+Giza uses classic Paxos~\cite{lamport01paxos} and may take multiple cross-DC
+round trips to resolve the conflicts. We deem this to be an acceptable
+tradeoff. 
 
+We implement Giza on top of the existing Azure storage infrastructure.  For
+each object, Giza stores its coded fragments in the Azure Blob storage of
+different DCs, and replicates its versioned meta-data containing the ids of 
+coded fragments in the Azure Table storage of multiple DCs.  Giza guarantees
+the consistency of versioned meta-data using Paxos/FastPaxos and it adapts both
+protocols to use the existing APIs of Azure Table storage.
 
-An ideal solution should optimize for the common case.
-When there are no concurrent updates, 
-reads and writes originating from any DC should complete within single cross-DC round trip.
-In addition, the ideal solution should ensure strong consistency in the rare case,
-when concurrent updates to the same object do sometimes occur.
-It is expected and acceptable that latency would increase
-as it takes multiple cross-DC round trips to resolve the conflicts.
+%An ideal solution should optimize for the common case.
+%When there are no concurrent updates, 
+%reads and writes originating from any DC should complete within single cross-DC round trip.
+%In addition, the ideal solution should ensure strong consistency in the rare case,
+%when concurrent updates to the same object do sometimes occur.
+%It is expected and acceptable that latency would increase
+%as it takes multiple cross-DC round trips to resolve the conflicts.
 
-Giza achieves the ideal solution and makes the following contributions:
+To summarize, this paper makes the following contributions:
 \begin{itemize}
     \item We have designed and implemented Giza, a strongly consistent,
       versioned object store that erasure codes objects across globally
       distributed data centers.
-    \item Giza achieves minimum latency in the common case and ensures strong consistency in the rare case.
-    \item Giza applies well-known distributed algorithms -- Paxos~\cite{lamport01paxos}
+    \item Giza achieves minimum latency in the common case when there are no concurrent conflicting access, and ensures strong consistency in the rare case under contention.
+    \item Giza applies well-known distributed protocols-- Paxos~\cite{lamport01paxos}
       and Fast Paxos~\cite{lamport05fast} -- in a novel way on top of restricted cloud storage APIs.
     \item Giza is deployed in \deployment and experimental results demonstrate
       that it achieves our design goals.
