@@ -1,45 +1,12 @@
+
 \section{The Case for Giza}
 \label{sec:motivation}
+
 
 This section presents an overview of Giza, 
 the characteristics of typical cloud storage workloads from Microsoft OneDrive,
 as well as the storage and networking trade-offs exploited by Giza.
 
-%\begin{figure}[tp]
-%\centering
-%\includegraphics[width=0.4\textwidth]{images/giza_example_crop_fit}
-%\caption{Storing Object in Giza}
-%\label{fig:giza_example}
-%\end{figure}
-
-\begin{figure*}[htp]
-\centering
-%\hspace{-2em}
-\begin{minipage}{0.3\textwidth}%
-\centering
-%\includegraphics[width=\textwidth]{images/giza_example_crop_fit}
-\includegraphics[width=\textwidth]{images/giza_example_crop_fit}
-\caption{Storing Object in Giza}
-\label{fig:giza_example}
-\end{minipage}%
-\begin{minipage}{0.7\textwidth}%
-\captionsetup{type=figure}
-\centering
-		\hspace{-1.5em}
-    \subcaptionbox{\label{fig:object_size-storage_capacity}}
-      {\includegraphics[height=0.275\textwidth]{data/object_size-storage_capacity}}%
-		\hspace{-1em}
-    \subcaptionbox{\label{fig:write_read_gap-bytes_read}}
-      {\includegraphics[height=0.275\textwidth]{data/write_read_gap-bytes_read}}%
-		\hspace{-1.5em}
-    \subcaptionbox{\label{fig:deletion}}
-      {\includegraphics[height=0.275\textwidth]{data/age-bytes}}%
-\caption{Microsoft OneDrive Characteristics}
-\label{fig:case_for_giza}
-%\end{figure}
-\end{minipage}%
-
-\end{figure*}
 
 \subsection{Giza Overview}
 
@@ -144,7 +111,7 @@ Percentage			& $57.96\%$	& $40.88\%$	& $1.16\%$
 {\bf Concurrency is Rare, but Versioning is Required:} The above table presents how often objects are updated and whether versioning is required. We observe that $57.96\%$ of the objects are written once and never updated during the three-month period. For the remaining, $40.88\%$ of the objects are updated exactly once and merely $1.16\%$ are updated more than twice. In addition, we observe that only $0.5\%$ of the updates
 are concurrent (within 1 second interval). This suggests that concurrent updates of same objects are rare in Giza (albeit possible).
 
-{\bf Deletion is not uncommon:} It turns out that OneDrive customers not only
+{\bf Deletion is Not Uncommon:} It turns out that OneDrive customers not only
 create new objects, but also delete old objects from time to time. To
 characterize how often objects are deleted and how long they have been stored
 upon deletion, we follow all the objects that were created during the first 3
@@ -264,3 +231,8 @@ replicates every object and thus incurs 1$\times$ of cross-DC traffic.
 {\bf Alternative Approach:} Giza stripes individual objects across multiple DCs. This design leads to cross-DC traffic when serving reads. An alternative design is to first aggregate objects into large logical volumes (say 100GB) and then erasure code different volumes across multiple DCs to generate parity volumes~\cite{f4:osdi14}. Since every object is stored in its entirety in one of the DCs, cross-DC traffic is avoided during reads.
 
 This design works great when objects are never deleted~\cite{f4:osdi14}. However, Giza must support deletion. Deleting objects from logical volumes (and canceling them from corresponding parity volumes) would result in complex bookkeeping and garbage collection, greatly increasing system complexity. In comparison, Giza keeps its design simple and relies on caching to drastically reduce the cross-DC traffic of reads to much lower than that of writes. 
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:

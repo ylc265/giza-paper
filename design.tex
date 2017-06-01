@@ -6,7 +6,7 @@ the data model, and the protocols for the {\em put}, {\em get}, and {\em delete}
 
 \subsection{Overview and Challenges}
 
-\begin{figure}[tp]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=0.52\textwidth]{fig/Giza}
 \caption{Giza architecture\label{fig:arch}}
@@ -34,7 +34,7 @@ cloud storage front-ends. Layering is commonly used in cloud infrastructure. For
 example, Percolator~\cite{peng12large} supports transactions by layering over a
 fault-tolerant distributed table store.
 
-\paragraph{Technical challenges}
+\paragraph{Technical Challenges}
 In \name, each coded fragment is named by a unique identifier.
 As a result, fragments are immutable, which simplifies the data path.
 

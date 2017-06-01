@@ -21,6 +21,8 @@ With many exabytes at present and exponential growth projected,
 it is highly desirable to lower the storage cost
 required for maintaining geo-redundancy.
 
+\input{fig_moti}
+
 \subsection{Cross-DC Erasure Coding: Why Now?}
 
 Erasure coding across geographically distributed DCs is an appealing option.
@@ -78,6 +80,7 @@ than ideal because the requests from non-primary data centers have to be relayed
 to the primary first. This would incur extra cross-DC latency, even when there are
 no concurrent updates.
 
+
 An ideal solution should optimize for the common case.
 When there are no concurrent updates, 
 reads and writes originating from any DC should complete within single cross-DC round trip.
@@ -97,3 +100,8 @@ Giza achieves the ideal solution and makes the following contributions:
     \item Giza is deployed in \deployment and experimental results demonstrate
       that it achieves our design goals.
 \end{itemize}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:
