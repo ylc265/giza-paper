@@ -140,7 +140,7 @@
 \newcommand{\TITLE}{Giza: Erasure Coding Objects across Global Data Centers}
 \newcommand{\KEYWORDS}{Put your keywords here}
 \newcommand{\CONFERENCE}{Somewhere}
-\newcommand{\PAGENUMBERS}{no}       % "yes" or "no"
+\newcommand{\PAGENUMBERS}{yes}       % "yes" or "no"
 \newcommand{\COLOR}{yes}
 \newcommand{\showComments}{yes}
 \newcommand{\comment}[1]{}
@@ -462,7 +462,12 @@ Copyright 200X ACM X-XXXXX-XX-X/XX/XX ...\$5.00}
 \begin{document}
 
 \maketitle
-\thispagestyle{empty}
+
+\ifthenelse{\equal{\PAGENUMBERS}{yes}}{%
+}{%
+  \thispagestyle{empty}
+}
+
 
 %\AcmCopyright
 %\ToAppear
